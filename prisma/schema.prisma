@@ -1,0 +1,235 @@
+// BUKADITA API v2 - Prisma Schema
+// Generated for Supabase PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Profile {
+  id            String   @id @db.Uuid
+  email         String?  @db.VarChar(255)
+  full_name     String   @db.VarChar(255)
+  phone         String?  @db.VarChar(20)
+  address       String?  @db.Text
+  date_of_birth DateTime? @db.Date
+  profil_url    String?  @db.Text
+  role          String   @default("pengguna") @db.VarChar(50)
+  created_at    DateTime @default(now()) @db.Timestamptz()
+  updated_at    DateTime @updatedAt @db.Timestamptz()
+
+  moduleProgress      UserModuleProgress[]
+  subMateriProgress   UserSubMateriProgress[]
+  poinProgress        UserPoinProgress[]
+  quizAttempts        QuizAttempt[]
+  activityLogs        ActivityLog[]
+  createdModules      Module[] @relation("CreatedBy")
+  createdQuizzes      MaterisQuiz[] @relation("CreatedBy")
+
+  @@map("profiles")
+  @@index([role])
+  @@index([phone])
+  @@index([email])
+}
+
+model Module {
+  id               String   @id @default(uuid()) @db.Uuid
+  slug             String   @unique @db.VarChar(255)
+  title            String   @db.VarChar(500)
+  description      String?  @db.Text
+  duration_label   String?  @db.VarChar(100)
+  duration_minutes Int?     @default(0)
+  lessons          Int?     @default(0)
+  category         String?  @db.VarChar(100)
+  published        Boolean  @default(false)
+  created_at       DateTime @default(now()) @db.Timestamptz()
+  updated_at       DateTime @updatedAt @db.Timestamptz()
+  created_by       String?  @db.Uuid
+
+  creator       Profile? @relation("CreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
+  subMateris    SubMateri[]
+  quizzes       MaterisQuiz[]
+  userProgress  UserModuleProgress[]
+
+  @@map("modules")
+  @@index([slug])
+  @@index([published])
+  @@index([category])
+}
+
+model SubMateri {
+  id          String   @id @default(uuid()) @db.Uuid
+  module_id   String   @db.Uuid
+  title       String   @db.VarChar(500)
+  content     String?  @db.Text
+  order_index Int      @default(0)
+  published   Boolean  @default(false)
+  created_at  DateTime @default(now()) @db.Timestamptz()
+  updated_at  DateTime @updatedAt @db.Timestamptz()
+
+  module         Module @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  poinDetails    PoinDetail[]
+  quizzes        MaterisQuiz[]
+  userProgress   UserSubMateriProgress[]
+
+  @@map("sub_materis")
+  @@index([module_id, order_index])
+}
+
+model PoinDetail {
+  id               String   @id @default(uuid()) @db.Uuid
+  sub_materi_id    String   @db.Uuid
+  title            String   @db.VarChar(500)
+  content_html     String?  @db.Text
+  duration_label   String?  @db.VarChar(100)
+  duration_minutes Int?     @default(5)
+  order_index      Int      @default(0)
+  created_at       DateTime @default(now()) @db.Timestamptz()
+  updated_at       DateTime @updatedAt @db.Timestamptz()
+
+  subMateri     SubMateri @relation(fields: [sub_materi_id], references: [id], onDelete: Cascade)
+  userProgress  UserPoinProgress[]
+
+  @@map("poin_details")
+  @@index([sub_materi_id, order_index])
+}
+
+model MaterisQuiz {
+  id                  String   @id @default(uuid()) @db.Uuid
+  module_id           String   @db.Uuid
+  sub_materi_id       String   @db.Uuid
+  quiz_type           String   @default("sub") @db.VarChar(50)
+  title               String?  @db.VarChar(500)
+  description         String?  @db.Text
+  time_limit_seconds  Int      @default(600)
+  passing_score       Int      @default(70)
+  published           Boolean  @default(false)
+  created_at          DateTime @default(now()) @db.Timestamptz()
+  updated_at          DateTime @updatedAt @db.Timestamptz()
+  created_by          String?  @db.Uuid
+
+  creator    Profile? @relation("CreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
+  module     Module @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  subMateri  SubMateri @relation(fields: [sub_materi_id], references: [id], onDelete: Cascade)
+  questions  QuizQuestion[]
+  attempts   QuizAttempt[]
+
+  @@map("materis_quizzes")
+  @@index([module_id])
+  @@index([sub_materi_id])
+}
+
+model QuizQuestion {
+  id                   String   @id @default(uuid()) @db.Uuid
+  quiz_id              String   @db.Uuid
+  question_text        String   @db.Text
+  options              Json     @db.JsonB
+  correct_answer_index Int      @default(0)
+  explanation          String?  @db.Text
+  order_index          Int      @default(0)
+  created_at           DateTime @default(now()) @db.Timestamptz()
+
+  quiz MaterisQuiz @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+
+  @@map("quiz_questions")
+  @@index([quiz_id, order_index])
+}
+
+model QuizAttempt {
+  id               String   @id @default(uuid()) @db.Uuid
+  quiz_id          String   @db.Uuid
+  user_id          String   @db.Uuid
+  score            Decimal  @default(0) @db.Decimal(5, 2)
+  total_questions  Int      @default(0)
+  correct_answers  Int      @default(0)
+  passed           Boolean  @default(false)
+  answers          Json?    @db.JsonB
+  started_at       DateTime @default(now()) @db.Timestamptz()
+  completed_at     DateTime? @db.Timestamptz()
+  created_at       DateTime @default(now()) @db.Timestamptz()
+
+  quiz MaterisQuiz @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+  user Profile @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("quiz_attempts")
+  @@index([user_id])
+  @@index([quiz_id])
+}
+
+model UserModuleProgress {
+  id               String   @id @default(uuid()) @db.Uuid
+  user_id          String   @db.Uuid
+  module_id        String   @db.Uuid
+  status           String   @default("not-started") @db.VarChar(50)
+  progress_percent Int      @default(0)
+  last_accessed_at DateTime @default(now()) @db.Timestamptz()
+  completed_at     DateTime? @db.Timestamptz()
+  created_at       DateTime @default(now()) @db.Timestamptz()
+  updated_at       DateTime @updatedAt @db.Timestamptz()
+
+  user   Profile @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [module_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, module_id])
+  @@map("user_module_progress")
+  @@index([user_id])
+}
+
+model UserSubMateriProgress {
+  id                 String   @id @default(uuid()) @db.Uuid
+  user_id            String   @db.Uuid
+  sub_materi_id      String   @db.Uuid
+  is_unlocked        Boolean  @default(false)
+  is_completed       Boolean  @default(false)
+  current_poin_index Int      @default(0)
+  progress_percent   Int      @default(0)
+  last_accessed_at   DateTime @default(now()) @db.Timestamptz()
+  completed_at       DateTime? @db.Timestamptz()
+  created_at         DateTime @default(now()) @db.Timestamptz()
+  updated_at         DateTime @updatedAt @db.Timestamptz()
+
+  user      Profile @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  subMateri SubMateri @relation(fields: [sub_materi_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, sub_materi_id])
+  @@map("user_sub_materi_progress")
+  @@index([user_id])
+}
+
+model UserPoinProgress {
+  id           String   @id @default(uuid()) @db.Uuid
+  user_id      String   @db.Uuid
+  poin_id      String   @db.Uuid
+  is_completed Boolean  @default(false)
+  completed_at DateTime? @db.Timestamptz()
+  created_at   DateTime @default(now()) @db.Timestamptz()
+
+  user        Profile @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  poinDetail  PoinDetail @relation(fields: [poin_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, poin_id])
+  @@map("user_poin_progress")
+  @@index([user_id])
+}
+
+model ActivityLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  user_id       String   @db.Uuid
+  action        String   @db.VarChar(100)
+  resource_type String?  @db.VarChar(100)
+  resource_id   String?  @db.Uuid
+  details       Json?    @db.JsonB
+  ip_address    String?  @db.VarChar(45)
+  user_agent    String?  @db.Text
+  created_at    DateTime @default(now()) @db.Timestamptz()
+
+  user Profile @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("activity_logs")
+  @@index([user_id, created_at])
+}
