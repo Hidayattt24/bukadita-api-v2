@@ -11,6 +11,9 @@ import { requireAdmin } from "../middlewares/role.middleware";
 
 const router = Router();
 
+// Admin route - Get all materials by module (including unpublished)
+router.get("/", requireAuth, requireAdmin, materialController.getAllMaterials);
+
 // Public routes
 router.get("/public", materialController.getPublicMaterials);
 router.get("/:id/public", materialController.getMaterialDetail);
@@ -18,6 +21,9 @@ router.get("/:id/quiz", materialController.getMaterialQuiz);
 
 // Protected routes (authenticated users)
 router.get("/:id/points", requireAuth, materialController.getPoinDetails);
+
+// Admin route - Get single material by ID (including unpublished)
+router.get("/:id", requireAuth, requireAdmin, materialController.getMaterialDetail);
 
 // Admin routes - Material management
 router.post(

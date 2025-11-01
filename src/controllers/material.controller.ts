@@ -3,6 +3,36 @@ import { AuthRequest } from "../middlewares/auth.middleware";
 import { sendSuccess, sendError, API_CODES } from "../utils/response.util";
 import * as materialService from "../services/material.service";
 
+// Admin: Get all materials by module (including unpublished)
+export const getAllMaterials = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { module_id, page = 1, limit = 10 } = req.query;
+
+    if (!module_id) {
+      sendError(res, API_CODES.VALIDATION_ERROR, "module_id is required", 400);
+      return;
+    }
+
+    const result = await materialService.getAllMaterials(
+      module_id as string,
+      Number(page),
+      Number(limit)
+    );
+
+    sendSuccess(
+      res,
+      "MATERIALS_FETCH_SUCCESS",
+      "Materials fetched successfully",
+      result
+    );
+  } catch (error: any) {
+    sendError(res, "MATERIALS_FETCH_ERROR", error.message, 500);
+  }
+};
+
 // Get public materials by module
 export const getPublicMaterials = async (
   req: AuthRequest,

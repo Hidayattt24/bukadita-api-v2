@@ -1,6 +1,56 @@
 import prisma from "../config/database";
 import logger from "../config/logger";
 
+// Admin: Get all materials by module (including unpublished)
+export const getAllMaterials = async (
+  moduleId: string,
+  page: number = 1,
+  limit: number = 10
+) => {
+  try {
+    const skip = (page - 1) * limit;
+
+    const [materials, total] = await Promise.all([
+      prisma.subMateri.findMany({
+        where: {
+          module_id: moduleId,
+        },
+        orderBy: {
+          order_index: "asc",
+        },
+        skip,
+        take: limit,
+        include: {
+          _count: {
+            select: {
+              poinDetails: true,
+              quizzes: true,
+            },
+          },
+        },
+      }),
+      prisma.subMateri.count({
+        where: {
+          module_id: moduleId,
+        },
+      }),
+    ]);
+
+    return {
+      items: materials,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  } catch (error) {
+    logger.error("Error fetching all materials:", error);
+    throw new Error("Failed to fetch materials");
+  }
+};
+
 // Get public materials by module
 export const getPublicMaterials = async (
   moduleId: string,
