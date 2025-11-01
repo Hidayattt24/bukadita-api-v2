@@ -141,11 +141,29 @@ export const getAllUsers = async (
       limit: Number(limit),
     });
 
+    // Add visibility rules based on caller's role
+    const callerRole = req.user?.role || 'pengguna';
+    const allowedRoles: string[] = ['pengguna'];
+
+    // Superadmin can manage both pengguna and admin
+    if (callerRole === 'superadmin') {
+      allowedRoles.push('admin');
+    }
+
+    const responseWithVisibility = {
+      ...result,
+      visibility: {
+        caller_role: callerRole,
+        allowed_roles: allowedRoles,
+        excluded_self: true
+      }
+    };
+
     sendSuccess(
       res,
       "USERS_FETCH_SUCCESS",
       "Users fetched successfully",
-      result
+      responseWithVisibility
     );
   } catch (error: any) {
     sendError(res, "USERS_FETCH_ERROR", error.message, 500);

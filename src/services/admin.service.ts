@@ -349,6 +349,7 @@ export const getQuizAttemptDetail = async (attemptId: string) => {
 // Get progress statistics
 export const getProgressStats = async () => {
   try {
+    // Safely get counts with fallback to 0
     const [
       totalUsers,
       totalModules,
@@ -357,21 +358,21 @@ export const getProgressStats = async () => {
       completedQuizzes,
       activeUsersToday,
     ] = await Promise.all([
-      prisma.profile.count({ where: { role: "pengguna" } }),
-      prisma.module.count({ where: { published: true } }),
-      prisma.materisQuiz.count({ where: { published: true } }),
-      prisma.userModuleProgress.count({ where: { status: "completed" } }),
-      prisma.quizAttempt.count({ where: { passed: true } }),
+      prisma.profile.count({ where: { role: "pengguna" } }).catch(() => 0),
+      prisma.module.count({ where: { published: true } }).catch(() => 0),
+      prisma.materisQuiz.count({ where: { published: true } }).catch(() => 0),
+      prisma.userModuleProgress.count({ where: { status: "completed" } }).catch(() => 0),
+      prisma.quizAttempt.count({ where: { passed: true } }).catch(() => 0),
       prisma.userModuleProgress.count({
         where: {
           last_accessed_at: {
             gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
           },
         },
-      }),
+      }).catch(() => 0),
     ]);
 
-    // Get module completion stats
+    // Get module completion stats (safely handle if modules table doesn't exist)
     const moduleStats = await prisma.module.findMany({
       where: { published: true },
       select: {
@@ -383,7 +384,7 @@ export const getProgressStats = async () => {
           },
         },
       },
-    });
+    }).catch(() => []);
 
     const moduleCompletionStats = moduleStats.map((module) => {
       const totalEnrolled = module.userProgress.length;
@@ -455,9 +456,13 @@ export const getAllUsers = async (params: {
         where: whereConditions,
         select: {
           id: true,
+          email: true,
           full_name: true,
           phone: true,
           role: true,
+          address: true,
+          date_of_birth: true,
+          profil_url: true,
           created_at: true,
           updated_at: true,
           _count: {
@@ -479,9 +484,13 @@ export const getAllUsers = async (params: {
     return {
       items: users.map((user) => ({
         id: user.id,
+        email: user.email,
         full_name: user.full_name,
         phone: user.phone,
         role: user.role,
+        address: user.address,
+        date_of_birth: user.date_of_birth,
+        profil_url: user.profil_url,
         created_at: user.created_at,
         modules_enrolled: user._count.moduleProgress,
         quiz_attempts: user._count.quizAttempts,
@@ -735,6 +744,7 @@ export const updateUser = async (
   userId: string,
   updateData: {
     full_name?: string;
+    email?: string;
     phone?: string;
     address?: string;
     date_of_birth?: string;

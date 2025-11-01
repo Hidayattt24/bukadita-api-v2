@@ -75,10 +75,18 @@ function logSection(title: string) {
 }
 
 async function runQuizFlowTest() {
-  console.log("\n╔═══════════════════════════════════════════════════════════════════╗");
-  console.log("║        BUKADITA API v2 - QUIZ FLOW TEST                          ║");
-  console.log("║        Complete Quiz Workflow Testing                            ║");
-  console.log("╚═══════════════════════════════════════════════════════════════════╝\n");
+  console.log(
+    "\n╔═══════════════════════════════════════════════════════════════════╗"
+  );
+  console.log(
+    "║        BUKADITA API v2 - QUIZ FLOW TEST                          ║"
+  );
+  console.log(
+    "║        Complete Quiz Workflow Testing                            ║"
+  );
+  console.log(
+    "╚═══════════════════════════════════════════════════════════════════╝\n"
+  );
 
   try {
     // =========================================================================
@@ -392,10 +400,13 @@ async function runQuizFlowTest() {
     logStep("Delete Sub-Materi", deleteSubMateri.ok);
 
     // Delete module
-    const deleteModule = await request(`${API_PREFIX}/modules/${testModuleId}`, {
-      method: "DELETE",
-      token: adminToken,
-    });
+    const deleteModule = await request(
+      `${API_PREFIX}/modules/${testModuleId}`,
+      {
+        method: "DELETE",
+        token: adminToken,
+      }
+    );
     logStep("Delete Module", deleteModule.ok);
 
     // =========================================================================

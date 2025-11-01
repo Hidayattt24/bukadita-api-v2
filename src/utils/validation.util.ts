@@ -17,7 +17,7 @@ export const loginSchema = z.object({
 
 export const createModuleSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  slug: z.string().regex(/^[a-z0-9-]+$/, "Slug must be lowercase with hyphens"),
+  slug: z.string().regex(/^[a-z0-9-]+$/, "Slug must be lowercase with hyphens").optional(),
   description: z.string().optional(),
   duration_label: z.string().optional(),
   duration_minutes: z.number().int().min(0).optional(),

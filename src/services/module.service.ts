@@ -100,7 +100,7 @@ export const getModuleBySlug = async (slug: string, userId?: string) => {
 
 export const createModule = async (data: {
   title: string;
-  slug: string;
+  slug?: string;
   description?: string;
   duration_label?: string;
   duration_minutes?: number;
@@ -109,9 +109,13 @@ export const createModule = async (data: {
   published?: boolean;
   created_by: string;
 }) => {
+  // Auto-generate slug from title if not provided
+  const slug = data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
   const module = await prisma.module.create({
     data: {
       ...data,
+      slug,
       published: data.published || false,
     },
   });
