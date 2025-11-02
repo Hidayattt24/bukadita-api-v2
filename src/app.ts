@@ -96,7 +96,8 @@ app.get(`${API_PREFIX}`, (req, res) => {
             modules: "GET /api/v1/progress/modules",
             moduleDetail: "GET /api/v1/progress/modules/:moduleId",
             updateModule: "POST /api/v1/progress/modules/:moduleId",
-            updateSubMaterial: "POST /api/v1/progress/sub-materials/:subMateriId",
+            updateSubMaterial:
+              "POST /api/v1/progress/sub-materials/:subMateriId",
           },
           quizzes: {
             get: "GET /api/v1/quizzes/:moduleId",
