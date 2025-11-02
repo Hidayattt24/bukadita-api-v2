@@ -1,4 +1,5 @@
 import prisma from "../config/database";
+import * as progressService from "./progress.service";
 
 export const getQuizzesByModule = async (moduleId: string) => {
   const quizzes = await prisma.materisQuiz.findMany({
@@ -157,6 +158,128 @@ export const submitQuiz = async (
     },
   });
 
+  // 🔥 NEW: If quiz passed and has sub_materi_id, mark all poins and sub-materi as completed
+  console.log("[submitQuiz] 🔍 Checking if should save progress:", {
+    passed,
+    sub_materi_id: quiz.sub_materi_id,
+    quiz_id: quiz.id,
+    user_id: userId,
+  });
+
+  if (passed && quiz.sub_materi_id) {
+    console.log(
+      `[submitQuiz] ✅ Quiz passed! Saving progress for sub-materi: ${quiz.sub_materi_id}`
+    );
+
+    try {
+      // Get all poins for this sub-materi
+      const poins = await prisma.poinDetail.findMany({
+        where: { sub_materi_id: quiz.sub_materi_id },
+        select: { id: true },
+      });
+
+      console.log(
+        `[submitQuiz] 📝 Found ${poins.length} poins to mark as completed`
+      );
+
+      // Mark all poins as completed
+      for (const poin of poins) {
+        console.log(`[submitQuiz] Marking poin ${poin.id} as completed...`);
+        await prisma.userPoinProgress.upsert({
+          where: {
+            user_id_poin_id: {
+              user_id: userId,
+              poin_id: poin.id,
+            },
+          },
+          update: {
+            is_completed: true,
+            completed_at: new Date(),
+          },
+          create: {
+            user_id: userId,
+            poin_id: poin.id,
+            is_completed: true,
+            completed_at: new Date(),
+          },
+        });
+      }
+
+      console.log(
+        `[submitQuiz] ✅ All ${poins.length} poins marked as completed`
+      );
+
+      // Mark sub-materi as completed
+      console.log(
+        `[submitQuiz] Marking sub-materi ${quiz.sub_materi_id} as completed...`
+      );
+      await prisma.userSubMateriProgress.upsert({
+        where: {
+          user_id_sub_materi_id: {
+            user_id: userId,
+            sub_materi_id: quiz.sub_materi_id,
+          },
+        },
+        update: {
+          is_completed: true,
+          progress_percent: 100,
+          completed_at: new Date(),
+          updated_at: new Date(),
+        },
+        create: {
+          user_id: userId,
+          sub_materi_id: quiz.sub_materi_id,
+          is_unlocked: true,
+          is_completed: true,
+          progress_percent: 100,
+          completed_at: new Date(),
+        },
+      });
+
+      console.log(`[submitQuiz] ✅ Sub-materi marked as completed`);
+
+      // Update module progress
+      const subMateri = await prisma.subMateri.findUnique({
+        where: { id: quiz.sub_materi_id },
+        select: { module_id: true },
+      });
+
+      if (subMateri) {
+        console.log(
+          `[submitQuiz] Updating module progress for module: ${subMateri.module_id}`
+        );
+        await progressService.updateModuleProgress(userId, subMateri.module_id);
+        await progressService.unlockNextSubMateri(
+          userId,
+          subMateri.module_id,
+          quiz.sub_materi_id
+        );
+        console.log(`[submitQuiz] ✅ Module progress updated`);
+      }
+
+      console.log(
+        `[submitQuiz] ✅ ALL PROGRESS SAVED - ${poins.length} poins and sub-materi ${quiz.sub_materi_id} marked as completed`
+      );
+    } catch (error) {
+      console.error(
+        "[submitQuiz] ❌ ERROR marking poins/sub-materi as completed:",
+        error
+      );
+      console.error("[submitQuiz] Error details:", {
+        name: (error as Error).name,
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+      });
+      // Don't throw error - quiz submission should still succeed
+    }
+  } else {
+    console.log("[submitQuiz] ⚠️ NOT saving progress because:", {
+      passed,
+      has_sub_materi_id: !!quiz.sub_materi_id,
+      sub_materi_id: quiz.sub_materi_id,
+    });
+  }
+
   return {
     attempt_id: attempt.id,
     score: parseFloat(score.toFixed(2)),
@@ -192,6 +315,35 @@ export const getQuizAttempts = async (userId: string, quizId?: string) => {
   });
 
   return attempts;
+};
+
+// 🔥 NEW: Get quiz attempts by module (for quiz history)
+export const getQuizAttemptsByModule = async (userId: string, moduleId: string) => {
+  const attempts = await prisma.quizAttempt.findMany({
+    where: {
+      user_id: userId,
+      quiz: {
+        module_id: moduleId,
+      },
+    },
+    include: {
+      quiz: {
+        select: {
+          id: true,
+          title: true,
+          sub_materi_id: true,
+          module_id: true,
+          passing_score: true,
+        },
+      },
+    },
+    orderBy: { completed_at: "desc" },
+  });
+
+  return {
+    attempts,
+    total: attempts.length,
+  };
 };
 
 export const createQuiz = async (data: {

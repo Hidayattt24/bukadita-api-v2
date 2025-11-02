@@ -80,6 +80,35 @@ export const getModuleProgress = async (userId: string, moduleId: string) => {
           progress_percent: 0,
         },
       });
+
+      // 🔥 FIX: Ensure first sub-materi is unlocked when module is accessed for first time
+      const firstSubMateri = await prisma.subMateri.findFirst({
+        where: { module_id: moduleId },
+        orderBy: { order_index: "asc" },
+      });
+
+      if (firstSubMateri) {
+        await prisma.userSubMateriProgress.upsert({
+          where: {
+            user_id_sub_materi_id: {
+              user_id: userId,
+              sub_materi_id: firstSubMateri.id,
+            },
+          },
+          update: {
+            is_unlocked: true,
+            updated_at: new Date(),
+          },
+          create: {
+            user_id: userId,
+            sub_materi_id: firstSubMateri.id,
+            is_unlocked: true,
+            is_completed: false,
+            current_poin_index: 0,
+            progress_percent: 0,
+          },
+        });
+      }
     }
 
     // Get module with sub-materis and their progress
@@ -104,14 +133,92 @@ export const getModuleProgress = async (userId: string, moduleId: string) => {
       throw new Error("Module not found");
     }
 
+    // 🔥 NEW: Check quiz history and auto-unlock next sub-materi if quiz passed
+    for (let i = 0; i < module.subMateris.length - 1; i++) {
+      const currentSub = module.subMateris[i];
+      const nextSub = module.subMateris[i + 1];
+      
+      // Check if current sub-materi has quiz
+      const quiz = await prisma.materisQuiz.findFirst({
+        where: {
+          module_id: moduleId,
+          sub_materi_id: currentSub.id,
+          published: true,
+        },
+      });
+      
+      if (quiz) {
+        // Check if user has passed this quiz
+        const passedAttempt = await prisma.quizAttempt.findFirst({
+          where: {
+            user_id: userId,
+            quiz_id: quiz.id,
+            passed: true,
+          },
+        });
+        
+        if (passedAttempt) {
+          // User has passed quiz, ensure next sub-materi is unlocked
+          await prisma.userSubMateriProgress.upsert({
+            where: {
+              user_id_sub_materi_id: {
+                user_id: userId,
+                sub_materi_id: nextSub.id,
+              },
+            },
+            update: {
+              is_unlocked: true,
+              updated_at: new Date(),
+            },
+            create: {
+              user_id: userId,
+              sub_materi_id: nextSub.id,
+              is_unlocked: true,
+              is_completed: false,
+              current_poin_index: 0,
+              progress_percent: 0,
+            },
+          });
+          
+          logger.info(`[getModuleProgress] Auto-unlocked next sub-materi ${nextSub.id} because quiz ${quiz.id} was passed`);
+        }
+      }
+    }
+    
+    // Re-fetch sub-materis with updated progress
+    const updatedModule = await prisma.module.findUnique({
+      where: { id: moduleId },
+      include: {
+        subMateris: {
+          orderBy: { order_index: "asc" },
+          include: {
+            userProgress: {
+              where: { user_id: userId },
+            },
+            poinDetails: {
+              orderBy: { order_index: "asc" },
+            },
+          },
+        },
+      },
+    });
+
+    if (!updatedModule) {
+      throw new Error("Module not found after update");
+    }
+
     // Calculate detailed progress
-    const subMaterisWithProgress = module.subMateris.map((sm) => {
+    const subMaterisWithProgress = updatedModule.subMateris.map((sm, index) => {
       const userProgress = sm.userProgress[0];
+      // 🔥 FIX: First sub-materi should always be unlocked
+      const isFirstSubMateri = index === 0;
+      const isUnlocked = isFirstSubMateri || userProgress?.is_unlocked || false;
+      
       return {
         id: sm.id,
         title: sm.title,
         order_index: sm.order_index,
-        is_unlocked: userProgress?.is_unlocked || false,
+        is_unlocked: isUnlocked,
         is_completed: userProgress?.is_completed || false,
         progress_percent: userProgress?.progress_percent || 0,
         total_poins: sm.poinDetails.length,
@@ -167,12 +274,20 @@ export const getSubMateriProgress = async (userId: string, subMateriId: string) 
     });
 
     if (!progress) {
+      // Get sub-materi to check if it's the first one
+      const subMateri = await prisma.subMateri.findUnique({
+        where: { id: subMateriId },
+        select: { order_index: true },
+      });
+
+      const isFirstSubMateri = subMateri?.order_index === 0;
+
       // Create initial progress
       progress = await prisma.userSubMateriProgress.create({
         data: {
           user_id: userId,
           sub_materi_id: subMateriId,
-          is_unlocked: false,
+          is_unlocked: isFirstSubMateri, // 🔥 FIX: Unlock if first sub-materi
           is_completed: false,
           current_poin_index: 0,
           progress_percent: 0,
@@ -194,6 +309,10 @@ export const getSubMateriProgress = async (userId: string, subMateriId: string) 
       });
     }
 
+    // 🔥 FIX: Check if this is the first sub-materi and ensure it's unlocked
+    const isFirstSubMateri = progress.subMateri.order_index === 0;
+    const actualIsUnlocked = isFirstSubMateri || progress.is_unlocked;
+
     // Map poin details with progress
     const poinsWithProgress = progress.subMateri.poinDetails.map((poin) => ({
       id: poin.id,
@@ -207,7 +326,7 @@ export const getSubMateriProgress = async (userId: string, subMateriId: string) 
       id: progress.id,
       user_id: progress.user_id,
       sub_materi_id: progress.sub_materi_id,
-      is_unlocked: progress.is_unlocked,
+      is_unlocked: actualIsUnlocked, // 🔥 FIX: Use calculated value
       is_completed: progress.is_completed,
       current_poin_index: progress.current_poin_index,
       progress_percent: progress.progress_percent,
@@ -314,7 +433,7 @@ export const checkMaterialAccess = async (userId: string, subMateriId: string) =
     return {
       can_access: canAccess,
       sub_materi_id: subMateriId,
-      is_unlocked: progress?.is_unlocked || false,
+      is_unlocked: isFirst || (progress?.is_unlocked || false), // 🔥 FIX: First sub-materi always unlocked
       reason: canAccess
         ? "Access granted"
         : "Complete previous sub-materi to unlock",
@@ -589,7 +708,7 @@ export const getAllUsersProgress = async (params: {
 };
 
 // Helper: Update module progress
-async function updateModuleProgress(userId: string, moduleId: string) {
+export async function updateModuleProgress(userId: string, moduleId: string) {
   const subMateris = await prisma.subMateri.findMany({
     where: { module_id: moduleId },
     include: {
@@ -638,7 +757,7 @@ async function updateModuleProgress(userId: string, moduleId: string) {
 }
 
 // Helper: Update sub-materi progress
-async function updateSubMateriProgress(userId: string, subMateriId: string) {
+export async function updateSubMateriProgress(userId: string, subMateriId: string) {
   const poins = await prisma.poinDetail.findMany({
     where: { sub_materi_id: subMateriId },
     include: {
@@ -680,7 +799,7 @@ async function updateSubMateriProgress(userId: string, subMateriId: string) {
 }
 
 // Helper: Unlock next sub-materi
-async function unlockNextSubMateri(
+export async function unlockNextSubMateri(
   userId: string,
   moduleId: string,
   currentSubMateriId: string

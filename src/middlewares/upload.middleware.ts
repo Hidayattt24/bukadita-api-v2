@@ -1,39 +1,38 @@
-import { Request } from "express";
 import multer from "multer";
+import { Request } from "express";
 
-// Configure multer untuk memory storage
+// Configure multer for memory storage
 const storage = multer.memoryStorage();
 
-// File filter untuk validasi tipe file
+// File filter for images only
 const fileFilter = (
   req: Request,
   file: Express.Multer.File,
   cb: multer.FileFilterCallback
 ) => {
-  // Allow images and videos
-  const allowedMimeTypes = [
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/gif",
-    "image/webp",
-    "video/mp4",
-    "video/webm",
-    "video/ogg",
-  ];
-
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  // Accept images only
+  if (file.mimetype.startsWith("image/")) {
     cb(null, true);
   } else {
-    cb(new Error("Invalid file type. Only images and videos are allowed."));
+    cb(new Error("Only image files are allowed"));
   }
 };
 
-// Upload middleware configuration
+// Create multer upload instance
 export const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
+  storage,
+  fileFilter,
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB max file size
+    fileSize: 5 * 1024 * 1024, // 5MB max file size
   },
 });
+
+// Middleware for single file upload
+export const uploadSingle = (fieldName: string) => {
+  return upload.single(fieldName);
+};
+
+// Middleware for multiple files upload
+export const uploadMultiple = (fieldName: string, maxCount: number) => {
+  return upload.array(fieldName, maxCount);
+};

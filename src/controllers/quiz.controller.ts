@@ -87,6 +87,28 @@ export const getQuizAttempts = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// 🔥 NEW: Get quiz attempts by module (for quiz history)
+export const getMyQuizAttempts = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const moduleId = req.query.module_id as string | undefined;
+    
+    if (!moduleId) {
+      return sendError(res, "MODULE_ID_REQUIRED", "module_id query parameter is required", 400);
+    }
+
+    const result = await quizService.getQuizAttemptsByModule(userId, moduleId);
+    sendSuccess(
+      res,
+      API_CODES.QUIZ_FETCH_SUCCESS,
+      "Quiz attempts retrieved successfully",
+      result
+    );
+  } catch (error: any) {
+    sendError(res, "QUIZ_ATTEMPTS_FETCH_ERROR", error.message, 400);
+  }
+};
+
 export const createQuiz = async (req: AuthRequest, res: Response) => {
   try {
     const created_by = req.user!.userId;

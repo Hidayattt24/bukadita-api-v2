@@ -349,24 +349,40 @@ export const getQuizAttemptDetail = async (attemptId: string) => {
 // Get progress statistics
 export const getProgressStats = async () => {
   try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
     // Safely get counts with fallback to 0
     const [
       totalUsers,
       totalModules,
+      totalMaterials,
       totalQuizzes,
       completedModules,
       completedQuizzes,
+      passedQuizzes,
       activeUsersToday,
+      newUsersThisWeek,
     ] = await Promise.all([
       prisma.profile.count({ where: { role: "pengguna" } }).catch(() => 0),
       prisma.module.count({ where: { published: true } }).catch(() => 0),
+      prisma.subMateri.count({ where: { published: true } }).catch(() => 0),
       prisma.materisQuiz.count({ where: { published: true } }).catch(() => 0),
       prisma.userModuleProgress.count({ where: { status: "completed" } }).catch(() => 0),
+      prisma.quizAttempt.count().catch(() => 0),
       prisma.quizAttempt.count({ where: { passed: true } }).catch(() => 0),
       prisma.userModuleProgress.count({
         where: {
           last_accessed_at: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
+            gte: oneDayAgo,
+          },
+        },
+      }).catch(() => 0),
+      prisma.profile.count({
+        where: {
+          role: "pengguna",
+          created_at: {
+            gte: sevenDaysAgo,
           },
         },
       }).catch(() => 0),
@@ -414,15 +430,76 @@ export const getProgressStats = async () => {
           )
         : 0;
 
+    // Get recent activities (quiz attempts and module completions)
+    const recentQuizAttempts = await prisma.quizAttempt.findMany({
+      where: {
+        completed_at: {
+          not: null,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            full_name: true,
+          },
+        },
+        quiz: {
+          select: {
+            title: true,
+          },
+        },
+      },
+      orderBy: {
+        completed_at: "desc",
+      },
+      take: 10,
+    }).catch(() => []);
+
+    const recentActivities = recentQuizAttempts.map((attempt) => {
+      const completedAt = attempt.completed_at || new Date();
+      const now = new Date();
+      const diffMs = now.getTime() - completedAt.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      let relativeTime = "";
+      if (diffMins < 1) {
+        relativeTime = "Baru saja";
+      } else if (diffMins < 60) {
+        relativeTime = `${diffMins} menit lalu`;
+      } else if (diffHours < 24) {
+        relativeTime = `${diffHours} jam lalu`;
+      } else {
+        relativeTime = `${diffDays} hari lalu`;
+      }
+
+      return {
+        id: attempt.id,
+        user: attempt.user.full_name || "Unknown User",
+        action: attempt.passed ? "Menyelesaikan kuis" : "Mencoba kuis",
+        category: attempt.quiz.title || "Kuis",
+        score: Number(attempt.score) || 0,
+        passed: attempt.passed,
+        time: completedAt.toISOString(),
+        relative_time: relativeTime,
+      };
+    });
+
     return {
       total_users: totalUsers,
       active_users_today: activeUsersToday,
+      new_users_this_week: newUsersThisWeek,
       total_modules: totalModules,
+      total_materials: totalMaterials,
       total_quizzes: totalQuizzes,
       completed_modules_total: completedModules,
       completed_quizzes_total: completedQuizzes,
+      passed_quizzes_total: passedQuizzes,
       average_completion_rate: avgCompletionRate,
       module_completion_stats: moduleCompletionStats,
+      recent_activities: recentActivities,
+      last_updated: new Date().toISOString(),
     };
   } catch (error) {
     logger.error("Error fetching progress stats:", error);

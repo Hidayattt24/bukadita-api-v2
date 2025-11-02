@@ -12,10 +12,12 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "migrate:users": "tsx migrate-user-credentials.ts",
+    "setup:storage": "tsx setup-storage.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:api": "tsx test-api.ts",
     "test:user-flow": "tsx test-user-flow.ts",
+    "test:user-profile": "tsx test-user-profile.ts",
     "check:storage": "tsx check-storage.ts",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""

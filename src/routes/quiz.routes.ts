@@ -20,6 +20,8 @@ router.post(
   quizController.submitQuiz
 );
 router.get("/attempts/me", requireAuth, quizController.getQuizAttempts);
+// 🔥 NEW: Get quiz attempts by module (for quiz history)
+router.get("/attempts/my", requireAuth, quizController.getMyQuizAttempts);
 
 // Admin routes
 router.post(
