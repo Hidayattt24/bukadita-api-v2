@@ -22,12 +22,31 @@ const app: Application = express();
 // Security middleware
 app.use(helmet());
 
-// CORS configuration
+// CORS configuration - support multiple origins (comma-separated)
+const getAllowedOrigins = () => {
+  const origins: string[] = [];
+
+  // Parse ADMIN_URL (can be comma-separated)
+  if (process.env.ADMIN_URL) {
+    const adminUrls = process.env.ADMIN_URL.split(",").map((url) => url.trim());
+    origins.push(...adminUrls);
+  } else {
+    origins.push("http://localhost:3000");
+  }
+
+  // Parse USER_URL (can be comma-separated)
+  if (process.env.USER_URL) {
+    const userUrls = process.env.USER_URL.split(",").map((url) => url.trim());
+    origins.push(...userUrls);
+  } else {
+    origins.push("http://localhost:3001");
+  }
+
+  return origins;
+};
+
 const corsOptions = {
-  origin: [
-    process.env.ADMIN_URL || "http://localhost:3000",
-    process.env.USER_URL || "http://localhost:3001",
-  ],
+  origin: getAllowedOrigins(),
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 };
