@@ -4,7 +4,6 @@ import helmet from "helmet";
 import compression from "compression";
 import morgan from "morgan";
 import { errorHandler } from "./middlewares/error.middleware";
-import { generalLimiter } from "./middlewares/rate-limit.middleware";
 import logger from "./config/logger";
 
 // Import routes
@@ -15,6 +14,7 @@ import materialRoutes from "./routes/material.routes";
 import progressRoutes from "./routes/progress.routes";
 import adminRoutes from "./routes/admin.routes";
 import quizAdminRoutes from "./routes/quiz.admin.routes";
+import noteRoutes from "./routes/note.routes";
 
 const app: Application = express();
 
@@ -46,9 +46,6 @@ app.use(
   })
 );
 
-// Rate limiting
-app.use("/api", generalLimiter);
-
 // Health check
 app.get("/health", (req, res) => {
   res.json({
@@ -75,6 +72,7 @@ app.use(`${API_PREFIX}/materials`, materialRoutes);
 app.use(`${API_PREFIX}/progress`, progressRoutes);
 app.use(`${API_PREFIX}/admin`, adminRoutes);
 app.use(`${API_PREFIX}/admin/quizzes`, quizAdminRoutes);
+app.use(`${API_PREFIX}/notes`, noteRoutes);
 
 // 404 handler
 app.use((req, res) => {

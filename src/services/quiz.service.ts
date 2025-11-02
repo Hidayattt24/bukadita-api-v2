@@ -196,7 +196,7 @@ export const getQuizAttempts = async (userId: string, quizId?: string) => {
 
 export const createQuiz = async (data: {
   module_id: string;
-  sub_materi_id: string;
+  sub_materi_id?: string;
   title?: string;
   description?: string;
   time_limit_seconds?: number;
@@ -204,11 +204,48 @@ export const createQuiz = async (data: {
   published?: boolean;
   created_by: string;
 }) => {
+  // Validate module exists
+  const module = await prisma.module.findUnique({
+    where: { id: data.module_id },
+  });
+
+  if (!module) {
+    throw new Error("Module not found");
+  }
+
+  // If sub_materi_id provided, validate it
+  if (data.sub_materi_id) {
+    const subMateri = await prisma.subMateri.findUnique({
+      where: { id: data.sub_materi_id },
+    });
+
+    if (!subMateri) {
+      throw new Error("Sub-materi not found");
+    }
+
+    if (subMateri.module_id !== data.module_id) {
+      throw new Error("Sub-materi does not belong to the specified module");
+    }
+  }
+
+  const quizData: any = {
+    module_id: data.module_id,
+    title: data.title || `Quiz ${module.title}`,
+    description: data.description,
+    time_limit_seconds: data.time_limit_seconds || 600,
+    passing_score: data.passing_score || 70,
+    quiz_type: data.sub_materi_id ? "sub_materi" : "module",
+    published: data.published || false,
+    created_by: data.created_by,
+  };
+
+  // Only add sub_materi_id if provided
+  if (data.sub_materi_id) {
+    quizData.sub_materi_id = data.sub_materi_id;
+  }
+
   const quiz = await prisma.materisQuiz.create({
-    data: {
-      ...data,
-      published: data.published || false,
-    },
+    data: quizData,
   });
 
   return quiz;

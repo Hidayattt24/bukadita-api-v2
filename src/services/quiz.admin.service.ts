@@ -16,21 +16,63 @@ export const createQuiz = async (
   userId: string
 ) => {
   try {
+    // Validate module exists
+    const module = await prisma.module.findUnique({
+      where: { id: data.module_id },
+    });
+
+    if (!module) {
+      throw new Error("Module not found");
+    }
+
+    // If sub_materi_id provided, validate it
+    if (data.sub_materi_id) {
+      const subMateri = await prisma.subMateri.findUnique({
+        where: { id: data.sub_materi_id },
+      });
+
+      if (!subMateri) {
+        throw new Error("Sub-materi not found");
+      }
+
+      if (subMateri.module_id !== data.module_id) {
+        throw new Error("Sub-materi does not belong to the specified module");
+      }
+    }
+
+    const quizData: any = {
+      module_id: data.module_id,
+      title: data.title || `Quiz ${module.title}`,
+      description: data.description,
+      time_limit_seconds: data.time_limit_seconds || 600,
+      passing_score: data.passing_score || 70,
+      quiz_type: data.quiz_type || "module",
+      published: data.published || false,
+      created_by: userId,
+    };
+
+    // Only add sub_materi_id if provided
+    if (data.sub_materi_id) {
+      quizData.sub_materi_id = data.sub_materi_id;
+    }
+
     const quiz = await prisma.materisQuiz.create({
-      // build data object conditionally because sub_materi_id may be optional
-      data: ((): any => {
-        const d: any = {
-          module_id: data.module_id,
-          title: data.title,
-          description: data.description,
-          time_limit_seconds: data.time_limit_seconds || 600,
-          passing_score: data.passing_score || 70,
-          quiz_type: data.quiz_type || "module",
-          published: data.published || false,
-        };
-        if (data.sub_materi_id) d.sub_materi_id = data.sub_materi_id;
-        return d;
-      })(),
+      data: quizData,
+      include: {
+        module: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+          },
+        },
+        subMateri: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
     });
 
     // Log activity
@@ -43,6 +85,7 @@ export const createQuiz = async (
         details: {
           title: quiz.title,
           module_id: quiz.module_id,
+          quiz_type: quiz.quiz_type,
         },
       },
     });
@@ -50,7 +93,7 @@ export const createQuiz = async (
     return quiz;
   } catch (error) {
     logger.error("Error creating quiz:", error);
-    throw new Error("Failed to create quiz");
+    throw new Error(error instanceof Error ? error.message : "Failed to create quiz");
   }
 };
 

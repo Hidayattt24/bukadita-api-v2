@@ -46,7 +46,8 @@ export const getAllModules = async (
 };
 
 export const getModuleBySlug = async (slug: string, userId?: string) => {
-  const module = await prisma.module.findUnique({
+  // Try to find by slug first, if not found try by ID (UUID)
+  let module = await prisma.module.findUnique({
     where: { slug },
     include: {
       subMateris: {
@@ -76,6 +77,40 @@ export const getModuleBySlug = async (slug: string, userId?: string) => {
       },
     },
   });
+
+  // If not found by slug, try by ID (UUID format check)
+  if (!module && slug.includes('-')) {
+    module = await prisma.module.findUnique({
+      where: { id: slug },
+      include: {
+        subMateris: {
+          orderBy: { order_index: "asc" },
+          include: {
+            poinDetails: {
+              orderBy: { order_index: "asc" },
+            },
+            quizzes: {
+              select: {
+                id: true,
+                title: true,
+                description: true,
+                time_limit_seconds: true,
+                passing_score: true,
+                published: true,
+              },
+            },
+          },
+        },
+        creator: {
+          select: {
+            id: true,
+            full_name: true,
+            role: true,
+          },
+        },
+      },
+    });
+  }
 
   if (!module) {
     throw new Error("Module not found");

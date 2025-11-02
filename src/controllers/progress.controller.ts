@@ -216,3 +216,49 @@ export const getUserStats = async (
     sendError(res, "STATS_FETCH_ERROR", error.message, 500);
   }
 };
+
+// Admin: Get all users progress (for monitoring)
+export const getAllUsersProgress = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { page = 1, limit = 20, search = "" } = req.query;
+
+    const result = await progressService.getAllUsersProgress({
+      page: Number(page),
+      limit: Number(limit),
+      search: String(search),
+    });
+
+    sendSuccess(
+      res,
+      "ALL_PROGRESS_FETCH_SUCCESS",
+      "All users progress fetched successfully",
+      result
+    );
+  } catch (error: any) {
+    sendError(res, "ALL_PROGRESS_FETCH_ERROR", error.message, 500);
+  }
+};
+
+// Admin: Get specific user progress
+export const getSpecificUserProgress = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { userId } = req.params;
+
+    const result = await progressService.getUserModulesProgress(userId);
+
+    sendSuccess(
+      res,
+      "USER_PROGRESS_FETCH_SUCCESS",
+      "User progress fetched successfully",
+      result
+    );
+  } catch (error: any) {
+    sendError(res, "USER_PROGRESS_FETCH_ERROR", error.message, 500);
+  }
+};

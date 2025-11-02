@@ -30,6 +30,7 @@ model Profile {
   activityLogs        ActivityLog[]
   createdModules      Module[] @relation("CreatedBy")
   createdQuizzes      MaterisQuiz[] @relation("CreatedBy")
+  userNotes           UserNote[]
 
   @@map("profiles")
   @@index([role])
@@ -122,8 +123,8 @@ model Media {
 model MaterisQuiz {
   id                  String   @id @default(uuid()) @db.Uuid
   module_id           String   @db.Uuid
-  sub_materi_id       String   @db.Uuid
-  quiz_type           String   @default("sub") @db.VarChar(50)
+  sub_materi_id       String?  @db.Uuid
+  quiz_type           String   @default("module") @db.VarChar(50)
   title               String?  @db.VarChar(500)
   description         String?  @db.Text
   time_limit_seconds  Int      @default(600)
@@ -135,7 +136,7 @@ model MaterisQuiz {
 
   creator    Profile? @relation("CreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
   module     Module @relation(fields: [module_id], references: [id], onDelete: Cascade)
-  subMateri  SubMateri @relation(fields: [sub_materi_id], references: [id], onDelete: Cascade)
+  subMateri  SubMateri? @relation(fields: [sub_materi_id], references: [id], onDelete: Cascade)
   questions  QuizQuestion[]
   attempts   QuizAttempt[]
 
@@ -259,4 +260,23 @@ model ActivityLog {
   @@map("activity_logs")
   @@index([user_id, created_at])
 
+}
+
+model UserNote {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  title      String   @db.VarChar(255)
+  content    String   @db.Text
+  category   String?  @default("Umum") @db.VarChar(100)
+  is_pinned  Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  user Profile @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_notes")
+  @@index([user_id])
+  @@index([created_at(sort: Desc)])
+  @@index([is_pinned])
+  @@index([category])
 }

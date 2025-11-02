@@ -3,13 +3,11 @@ import * as authController from "../controllers/auth.controller";
 import { validate } from "../middlewares/validation.middleware";
 import { registerSchema, loginSchema } from "../utils/validation.util";
 import { requireAuth } from "../middlewares/auth.middleware";
-import { authLimiter } from "../middlewares/rate-limit.middleware";
 
 const router = Router();
 
 router.post(
   "/register",
-  authLimiter,
   validate(registerSchema),
   authController.register
 );

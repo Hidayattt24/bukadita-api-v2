@@ -15,6 +15,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:api": "tsx test-api.ts",
+    "test:user-flow": "tsx test-user-flow.ts",
     "check:storage": "tsx check-storage.ts",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""

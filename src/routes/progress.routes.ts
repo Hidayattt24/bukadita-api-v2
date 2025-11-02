@@ -1,11 +1,16 @@
 import { Router } from "express";
 import * as progressController from "../controllers/progress.controller";
 import { requireAuth } from "../middlewares/auth.middleware";
+import { requireAdmin } from "../middlewares/role.middleware";
 
 const router = Router();
 
 // All progress routes require authentication
 router.use(requireAuth);
+
+// Admin routes - must be before user routes
+router.get("/admin/all-users", requireAdmin, progressController.getAllUsersProgress);
+router.get("/admin/users/:userId", requireAdmin, progressController.getSpecificUserProgress);
 
 // Module progress
 router.get("/modules", progressController.getUserModulesProgress);

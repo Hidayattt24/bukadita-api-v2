@@ -28,7 +28,8 @@ export const createModuleSchema = z.object({
 
 export const createQuizSchema = z.object({
   module_id: z.string().uuid(),
-  sub_materi_id: z.string().uuid(),
+  sub_materi_id: z.string().uuid().optional(),
+  quiz_type: z.enum(["module", "sub_materi"]).optional(),
   title: z.string().optional(),
   description: z.string().optional(),
   time_limit_seconds: z.number().int().min(60).optional(),

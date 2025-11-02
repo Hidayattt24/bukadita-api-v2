@@ -315,8 +315,8 @@ export const checkMaterialAccess = async (userId: string, subMateriId: string) =
       can_access: canAccess,
       sub_materi_id: subMateriId,
       is_unlocked: progress?.is_unlocked || false,
-      reason: canAccess 
-        ? "Access granted" 
+      reason: canAccess
+        ? "Access granted"
         : "Complete previous sub-materi to unlock",
     };
   } catch (error) {
@@ -377,8 +377,8 @@ export const getQuizProgress = async (userId: string, quizId: string) => {
       take: 10,
     });
 
-    const bestScore = attempts.length > 0 
-      ? Math.max(...attempts.map((a) => Number(a.score))) 
+    const bestScore = attempts.length > 0
+      ? Math.max(...attempts.map((a) => Number(a.score)))
       : 0;
 
     const passed = attempts.some((a) => a.passed);
@@ -435,8 +435,8 @@ export const getUserStats = async (userId: string) => {
     return {
       total_modules: totalModules,
       completed_modules: completedModules,
-      module_completion_rate: totalModules > 0 
-        ? Math.round((completedModules / totalModules) * 100) 
+      module_completion_rate: totalModules > 0
+        ? Math.round((completedModules / totalModules) * 100)
         : 0,
       total_materials: totalSubMateris,
       completed_materials: completedSubMateris,
@@ -450,6 +450,141 @@ export const getUserStats = async (userId: string) => {
   } catch (error) {
     logger.error("Error fetching user stats:", error);
     throw new Error("Failed to fetch user statistics");
+  }
+};
+
+// Admin: Get all users progress for monitoring
+export const getAllUsersProgress = async (params: {
+  page: number;
+  limit: number;
+  search: string;
+}) => {
+  try {
+    const { page, limit, search } = params;
+    const skip = (page - 1) * limit;
+
+    // Build where clause for search
+    const whereClause = search
+      ? {
+        OR: [
+          { full_name: { contains: search, mode: "insensitive" as const } },
+          { email: { contains: search, mode: "insensitive" as const } },
+          { phone: { contains: search, mode: "insensitive" as const } },
+        ],
+        role: "pengguna", // Only show regular users, not admins
+      }
+      : {
+        role: "pengguna",
+      };
+
+    // Get users with their progress
+    const [users, total] = await Promise.all([
+      prisma.profile.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          email: true,
+          full_name: true,
+          phone: true,
+          created_at: true,
+        },
+        skip,
+        take: limit,
+        orderBy: {
+          created_at: "desc",
+        },
+      }),
+      prisma.profile.count({ where: whereClause }),
+    ]);
+
+    // Get progress for each user
+    const usersWithProgress = await Promise.all(
+      users.map(async (user) => {
+        const [moduleProgress, quizAttempts, lastActivity] = await Promise.all([
+          prisma.userModuleProgress.findMany({
+            where: { user_id: user.id },
+            select: {
+              status: true,
+              progress_percent: true,
+              last_accessed_at: true,
+              module: {
+                select: {
+                  title: true,
+                },
+              },
+            },
+          }),
+          prisma.quizAttempt.findMany({
+            where: { user_id: user.id },
+            select: {
+              score: true,
+              passed: true,
+              created_at: true,
+            },
+            orderBy: {
+              created_at: "desc",
+            },
+            take: 1,
+          }),
+          prisma.userModuleProgress.findFirst({
+            where: { user_id: user.id },
+            orderBy: {
+              last_accessed_at: "desc",
+            },
+            select: {
+              last_accessed_at: true,
+            },
+          }),
+        ]);
+
+        const completedModules = moduleProgress.filter(
+          (p) => p.status === "completed"
+        ).length;
+        const inProgressModules = moduleProgress.filter(
+          (p) => p.status === "in-progress"
+        ).length;
+        const totalModulesAccessed = moduleProgress.length;
+
+        const passedQuizzes = await prisma.quizAttempt.count({
+          where: { user_id: user.id, passed: true },
+        });
+
+        const totalQuizAttempts = await prisma.quizAttempt.count({
+          where: { user_id: user.id },
+        });
+
+        return {
+          id: user.id,
+          email: user.email,
+          full_name: user.full_name,
+          phone: user.phone,
+          registered_at: user.created_at,
+          last_activity: lastActivity?.last_accessed_at || null,
+          progress: {
+            modules_accessed: totalModulesAccessed,
+            modules_in_progress: inProgressModules,
+            modules_completed: completedModules,
+            quiz_attempts: totalQuizAttempts,
+            quizzes_passed: passedQuizzes,
+            last_quiz_score: quizAttempts[0]?.score || null,
+            last_quiz_passed: quizAttempts[0]?.passed || false,
+          },
+        };
+      })
+    );
+
+    return {
+      users: usersWithProgress,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  } catch (error) {
+    logger.error("Error fetching all users progress:", error);
+    throw new Error("Failed to fetch all users progress");
   }
 };
 
@@ -473,10 +608,10 @@ async function updateModuleProgress(userId: string, moduleId: string) {
     ? Math.round((completedSubMateris / totalSubMateris) * 100)
     : 0;
 
-  const status = 
+  const status =
     progressPercent === 0 ? "not-started" :
-    progressPercent === 100 ? "completed" :
-    "in-progress";
+      progressPercent === 100 ? "completed" :
+        "in-progress";
 
   await prisma.userModuleProgress.upsert({
     where: {
