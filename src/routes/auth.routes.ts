@@ -6,11 +6,7 @@ import { requireAuth } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-router.post(
-  "/register",
-  validate(registerSchema),
-  authController.register
-);
+router.post("/register", validate(registerSchema), authController.register);
 router.post("/login", validate(loginSchema), authController.login);
 router.post("/refresh", authController.refresh);
 router.post("/logout", requireAuth, authController.logout);

@@ -93,7 +93,9 @@ export const createQuiz = async (
     return quiz;
   } catch (error) {
     logger.error("Error creating quiz:", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to create quiz");
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to create quiz"
+    );
   }
 };
 
