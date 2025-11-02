@@ -288,3 +288,56 @@ export const deletePoinDetail = async (
     sendError(res, "POIN_DELETE_ERROR", error.message, 400);
   }
 };
+
+// Admin: Upload media to poin detail
+export const uploadMediaToPoin = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      sendError(res, API_CODES.VALIDATION_ERROR, "No file uploaded", 400);
+      return;
+    }
+
+    // Pass the full mimetype to service
+    const result = await materialService.uploadMediaToPoin(
+      id,
+      file,
+      file.mimetype
+    );
+
+    sendSuccess(
+      res,
+      "MEDIA_UPLOAD_SUCCESS",
+      "Media uploaded successfully",
+      result,
+      201
+    );
+  } catch (error: any) {
+    sendError(res, "MEDIA_UPLOAD_ERROR", error.message, 400);
+  }
+};
+
+// Admin: Delete media from poin detail
+export const deleteMediaFromPoin = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { mediaId } = req.params;
+    const result = await materialService.deleteMediaFromPoin(mediaId);
+
+    sendSuccess(
+      res,
+      "MEDIA_DELETE_SUCCESS",
+      "Media deleted successfully",
+      { id: mediaId }
+    );
+  } catch (error: any) {
+    sendError(res, "MEDIA_DELETE_ERROR", error.message, 400);
+  }
+};

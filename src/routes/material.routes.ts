@@ -8,6 +8,7 @@ import {
 } from "../utils/validation.util";
 import { requireAuth } from "../middlewares/auth.middleware";
 import { requireAdmin } from "../middlewares/role.middleware";
+import { upload } from "../middlewares/upload.middleware";
 
 const router = Router();
 
@@ -70,6 +71,22 @@ router.delete(
   requireAuth,
   requireAdmin,
   materialController.deletePoinDetail
+);
+
+// Admin routes - Media management for poin details
+router.post(
+  "/points/:id/media",
+  requireAuth,
+  requireAdmin,
+  upload.single("file"),
+  materialController.uploadMediaToPoin
+);
+
+router.delete(
+  "/media/:mediaId",
+  requireAuth,
+  requireAdmin,
+  materialController.deleteMediaFromPoin
 );
 
 export default router;

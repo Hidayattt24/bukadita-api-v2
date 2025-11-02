@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -35,6 +35,7 @@ model Profile {
   @@index([role])
   @@index([phone])
   @@index([email])
+
 }
 
 model Module {
@@ -60,6 +61,7 @@ model Module {
   @@index([slug])
   @@index([published])
   @@index([category])
+
 }
 
 model SubMateri {
@@ -79,6 +81,7 @@ model SubMateri {
 
   @@map("sub_materis")
   @@index([module_id, order_index])
+
 }
 
 model PoinDetail {
@@ -94,9 +97,26 @@ model PoinDetail {
 
   subMateri     SubMateri @relation(fields: [sub_materi_id], references: [id], onDelete: Cascade)
   userProgress  UserPoinProgress[]
+  media         Media[]
 
   @@map("poin_details")
   @@index([sub_materi_id, order_index])
+
+}
+
+model Media {
+  id              String   @id @default(uuid()) @db.Uuid
+  poin_detail_id  String   @db.Uuid
+  media_type      String   @db.VarChar(50) // image, video
+  media_url       String   @db.Text
+  storage_path    String?  @db.Text
+  created_at      DateTime @default(now()) @db.Timestamptz()
+
+  poinDetail PoinDetail @relation(fields: [poin_detail_id], references: [id], onDelete: Cascade)
+
+  @@map("media")
+  @@index([poin_detail_id])
+
 }
 
 model MaterisQuiz {
@@ -122,6 +142,7 @@ model MaterisQuiz {
   @@map("materis_quizzes")
   @@index([module_id])
   @@index([sub_materi_id])
+
 }
 
 model QuizQuestion {
@@ -138,6 +159,7 @@ model QuizQuestion {
 
   @@map("quiz_questions")
   @@index([quiz_id, order_index])
+
 }
 
 model QuizAttempt {
@@ -159,6 +181,7 @@ model QuizAttempt {
   @@map("quiz_attempts")
   @@index([user_id])
   @@index([quiz_id])
+
 }
 
 model UserModuleProgress {
@@ -178,6 +201,7 @@ model UserModuleProgress {
   @@unique([user_id, module_id])
   @@map("user_module_progress")
   @@index([user_id])
+
 }
 
 model UserSubMateriProgress {
@@ -199,6 +223,7 @@ model UserSubMateriProgress {
   @@unique([user_id, sub_materi_id])
   @@map("user_sub_materi_progress")
   @@index([user_id])
+
 }
 
 model UserPoinProgress {
@@ -215,6 +240,7 @@ model UserPoinProgress {
   @@unique([user_id, poin_id])
   @@map("user_poin_progress")
   @@index([user_id])
+
 }
 
 model ActivityLog {
@@ -232,4 +258,5 @@ model ActivityLog {
 
   @@map("activity_logs")
   @@index([user_id, created_at])
+
 }

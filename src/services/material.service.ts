@@ -1,5 +1,6 @@
 import prisma from "../config/database";
 import logger from "../config/logger";
+import supabaseAdmin from "../config/supabase";
 
 // Admin: Get all materials by module (including unpublished)
 export const getAllMaterials = async (
@@ -112,6 +113,14 @@ export const getMaterialDetail = async (materialId: string) => {
           orderBy: {
             order_index: "asc",
           },
+          include: {
+            // @ts-ignore - Prisma client will be regenerated, media relation exists
+            media: {
+              orderBy: {
+                created_at: "asc",
+              },
+            },
+          },
         },
         quizzes: {
           where: {
@@ -129,7 +138,34 @@ export const getMaterialDetail = async (materialId: string) => {
       },
     });
 
-    return material;
+    if (!material) {
+      return null;
+    }
+
+    // Transform media field to poin_media for frontend compatibility
+    const transformedMaterial = {
+      ...material,
+      poin_details: material.poinDetails.map((poin: any) => ({
+        ...poin,
+        poin_media:
+          poin.media?.map((m: any) => ({
+            id: m.id,
+            poin_detail_id: m.poin_detail_id,
+            file_url: m.media_url,
+            media_url: m.media_url, // Keep both for compatibility
+            mime_type: m.media_type,
+            media_type: m.media_type, // Keep both for compatibility
+            original_filename: m.storage_path?.split("/").pop() || "media",
+            file_size: 0, // Not stored yet
+            storage_path: m.storage_path,
+            created_at: m.created_at,
+          })) || [],
+        media: undefined, // Remove original media field
+      })),
+      poinDetails: undefined, // Remove original poinDetails field
+    };
+
+    return transformedMaterial;
   } catch (error) {
     logger.error("Error fetching material detail:", error);
     throw new Error("Failed to fetch material detail");
@@ -152,10 +188,16 @@ export const getPoinDetails = async (materialId: string, userId: string) => {
             user_id: userId,
           },
         },
+        // @ts-ignore - Prisma client will be regenerated, media relation exists
+        media: {
+          orderBy: {
+            created_at: "asc",
+          },
+        },
       },
     });
 
-    // Transform to include progress status
+    // Transform to include progress status and media
     return poinDetails.map((poin) => ({
       id: poin.id,
       sub_materi_id: poin.sub_materi_id,
@@ -164,8 +206,13 @@ export const getPoinDetails = async (materialId: string, userId: string) => {
       duration_label: poin.duration_label,
       duration_minutes: poin.duration_minutes,
       order_index: poin.order_index,
-      is_completed: poin.userProgress.length > 0 ? poin.userProgress[0].is_completed : false,
-      completed_at: poin.userProgress.length > 0 ? poin.userProgress[0].completed_at : null,
+      is_completed:
+        poin.userProgress.length > 0
+          ? poin.userProgress[0].is_completed
+          : false,
+      completed_at:
+        poin.userProgress.length > 0 ? poin.userProgress[0].completed_at : null,
+      media: poin.media,
     }));
   } catch (error) {
     logger.error("Error fetching poin details:", error);
@@ -381,5 +428,116 @@ export const deletePoinDetail = async (poinId: string) => {
   } catch (error) {
     logger.error("Error deleting poin detail:", error);
     throw new Error("Failed to delete poin detail");
+  }
+};
+
+// Admin: Upload media to poin detail
+export const uploadMediaToPoin = async (
+  poinId: string,
+  file: Express.Multer.File,
+  mimeType: string
+) => {
+  try {
+    // Verify poin exists
+    const poin = await prisma.poinDetail.findUnique({
+      where: { id: poinId },
+    });
+
+    if (!poin) {
+      throw new Error("Poin detail not found");
+    }
+
+    // Determine folder based on mime type
+    let folder = "files";
+    if (mimeType.startsWith("image/")) {
+      folder = "images";
+    } else if (mimeType.startsWith("video/")) {
+      folder = "videos";
+    } else if (mimeType.startsWith("audio/")) {
+      folder = "audios";
+    }
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const originalName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const fileName = `${timestamp}-${originalName}`;
+    const bucketName = "learning-media";
+    const filePath = `${folder}/${poinId}/${fileName}`;
+
+    // Upload to Supabase Storage
+    const { data, error } = await supabaseAdmin.storage
+      .from(bucketName)
+      .upload(filePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (error) {
+      logger.error("Supabase upload error:", error);
+      throw new Error(`Failed to upload file: ${error.message}`);
+    }
+
+    // Get public URL
+    const {
+      data: { publicUrl },
+    } = supabaseAdmin.storage.from(bucketName).getPublicUrl(filePath);
+
+    // Create media record
+    // @ts-ignore - Prisma client will be regenerated, media model exists in schema
+    const media = await prisma.media.create({
+      data: {
+        poin_detail_id: poinId,
+        media_type: mimeType,
+        media_url: publicUrl,
+        storage_path: filePath,
+      },
+    });
+
+    logger.info(`Media uploaded successfully for poin ${poinId}:`, {
+      mediaId: media.id,
+      type: mimeType,
+    });
+
+    return media;
+  } catch (error) {
+    logger.error("Error uploading media to poin:", error);
+    throw error;
+  }
+};
+
+// Admin: Delete media from poin detail
+export const deleteMediaFromPoin = async (mediaId: string) => {
+  try {
+    // @ts-ignore - Prisma client will be regenerated, media model exists in schema
+    const media = await prisma.media.findUnique({
+      where: { id: mediaId },
+    });
+
+    if (!media) {
+      throw new Error("Media not found");
+    }
+
+    // Delete from Supabase Storage
+    if (media.storage_path) {
+      const { error } = await supabaseAdmin.storage
+        .from("learning-media")
+        .remove([media.storage_path]);
+
+      if (error) {
+        logger.error("Supabase delete error:", error);
+        // Continue to delete record even if storage deletion fails
+      }
+    }
+
+    // Delete from database
+    // @ts-ignore - Prisma client will be regenerated, media model exists in schema
+    await prisma.media.delete({
+      where: { id: mediaId },
+    });
+
+    return media;
+  } catch (error) {
+    logger.error("Error deleting media:", error);
+    throw error;
   }
 };
