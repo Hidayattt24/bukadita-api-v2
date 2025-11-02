@@ -2,6 +2,10 @@
   "version": 2,
   "routes": [
     {
+      "src": "/",
+      "dest": "/health"
+    },
+    {
       "src": "/health",
       "dest": "api/index.ts"
     },
