@@ -17,3 +17,4 @@ coverage
 prisma/migrations
 node_modules/
 .vercel
+.env*.local
