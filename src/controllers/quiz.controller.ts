@@ -34,14 +34,15 @@ export const getQuizById = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const startQuiz = async (req: AuthRequest, res: Response) => {
+export const startQuiz = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
     const { quiz_id, quizId } = req.body;
     const finalQuizId = quiz_id || quizId;
 
     if (!finalQuizId) {
-      return sendError(res, "QUIZ_START_ERROR", "quiz_id is required", 400);
+      sendError(res, "QUIZ_START_ERROR", "quiz_id is required", 400);
+      return;
     }
 
     const result = await quizService.startQuiz(userId, finalQuizId);
@@ -88,13 +89,14 @@ export const getQuizAttempts = async (req: AuthRequest, res: Response) => {
 };
 
 // 🔥 NEW: Get quiz attempts by module (for quiz history)
-export const getMyQuizAttempts = async (req: AuthRequest, res: Response) => {
+export const getMyQuizAttempts = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
     const moduleId = req.query.module_id as string | undefined;
-    
+
     if (!moduleId) {
-      return sendError(res, "MODULE_ID_REQUIRED", "module_id query parameter is required", 400);
+      sendError(res, "MODULE_ID_REQUIRED", "module_id query parameter is required", 400);
+      return;
     }
 
     const result = await quizService.getQuizAttemptsByModule(userId, moduleId);

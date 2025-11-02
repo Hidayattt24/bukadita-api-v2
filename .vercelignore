@@ -1,0 +1,15 @@
+node_modules
+.env
+.env.local
+.env.*.local
+dist
+*.log
+.DS_Store
+coverage
+.vscode
+.idea
+*.test.ts
+test-*.ts
+migrate-*.ts
+setup-*.ts
+check-*.ts
