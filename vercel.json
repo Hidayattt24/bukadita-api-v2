@@ -8,11 +8,26 @@
   ],
   "routes": [
     {
+      "src": "/health",
+      "dest": "api/index.ts"
+    },
+    {
+      "src": "/api/v1/(.*)",
+      "dest": "api/index.ts"
+    },
+    {
       "src": "/(.*)",
       "dest": "api/index.ts"
     }
   ],
   "env": {
     "NODE_ENV": "production"
+  },
+  "regions": ["sin1"],
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 10,
+      "memory": 1024
+    }
   }
 }
