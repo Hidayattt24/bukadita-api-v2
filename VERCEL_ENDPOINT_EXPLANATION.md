@@ -5,6 +5,7 @@
 ### Traditional Server vs Serverless
 
 **Traditional (Development - `npm run dev`):**
+
 ```
 Client → Express Server (Running 24/7) → Database
          Port 8080
@@ -12,6 +13,7 @@ Client → Express Server (Running 24/7) → Database
 ```
 
 **Serverless (Vercel Production):**
+
 ```
 Client → Vercel Edge Network → Serverless Function → Database
          (Auto-scaled)          (api/index.ts)
@@ -35,14 +37,14 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     await new Promise<void>((resolve, reject) => {
       // Passing Vercel req/res ke Express app
       app(req as any, res as any);
-      
+
       // Wait sampai response selesai
       res.on("finish", () => resolve());
       res.on("error", (err) => reject(err));
     });
   } catch (error) {
     console.error("Serverless function error:", error);
-    
+
     if (!res.headersSent) {
       res.status(500).json({
         error: true,
@@ -56,6 +58,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 ```
 
 **Penjelasan:**
+
 1. **`export default async`** - Vercel butuh default export function
 2. **`VercelRequest, VercelResponse`** - Type dari Vercel, bukan Express
 3. **`Promise wrapper`** - Express app asynchronous, butuh di-wrap
@@ -103,6 +106,7 @@ export default app;
 ```
 
 **Penting:**
+
 - ✅ Export `app` saja
 - ❌ JANGAN panggil `app.listen()` - ini untuk serverless!
 - ✅ `app.listen()` hanya di `src/server.ts` untuk local dev
@@ -122,6 +126,7 @@ app.listen(PORT, () => {
 ```
 
 **Catatan:**
+
 - File ini **TIDAK** digunakan di Vercel
 - Hanya untuk `npm run dev` (local development)
 - Di Vercel, entry point adalah `api/index.ts`
@@ -169,15 +174,18 @@ app.listen(PORT, () => {
 **Penjelasan Detail:**
 
 #### `builds`
+
 ```json
 {
-  "src": "api/index.ts",  // Entry point
-  "use": "@vercel/node"   // Builder untuk Node.js
+  "src": "api/index.ts", // Entry point
+  "use": "@vercel/node" // Builder untuk Node.js
 }
 ```
+
 - Memberitahu Vercel untuk build file `api/index.ts` sebagai Node.js function
 
 #### `routes`
+
 ```json
 [
   { "src": "/health", "dest": "api/index.ts" },
@@ -187,6 +195,7 @@ app.listen(PORT, () => {
 ```
 
 **Cara Kerja Routing:**
+
 1. Client request: `GET https://bukadita-api-v2.vercel.app/health`
 2. Vercel match route: `/health` → `api/index.ts`
 3. Function `api/index.ts` dipanggil dengan `req.url = "/health"`
@@ -194,6 +203,7 @@ app.listen(PORT, () => {
 5. Response dikirim kembali ke client
 
 **Contoh Request Flow:**
+
 ```
 Request: GET /api/v1/modules
 
@@ -209,14 +219,17 @@ Request: GET /api/v1/modules
 ```
 
 #### `regions`
+
 ```json
 "regions": ["sin1"]
 ```
+
 - `sin1` = Singapore (AWS ap-southeast-1)
 - Dekat dengan Supabase database (also Singapore)
 - Lower latency = faster response
 
 #### `functions`
+
 ```json
 "functions": {
   "api/index.ts": {
@@ -227,6 +240,7 @@ Request: GET /api/v1/modules
 ```
 
 **Vercel Plan Limits:**
+
 - **Free:** 10s timeout, 1GB RAM
 - **Pro:** 60s timeout, 3GB RAM max
 - **Enterprise:** Custom
@@ -241,11 +255,12 @@ Request: GET /api/v1/modules
 // ❌ JANGAN ini di serverless
 const client = new Pool({
   connectionString: DATABASE_URL,
-  max: 20,  // 20 connections per function instance
+  max: 20, // 20 connections per function instance
 });
 ```
 
 **Kenapa bermasalah?**
+
 - Setiap function invocation = new instance
 - 100 concurrent requests = 100 instances × 20 connections = 2000 connections!
 - Database kehabisan connections → crash
@@ -255,8 +270,9 @@ const client = new Pool({
 ### ✅ Solution: Prisma + Connection Pooling
 
 **1. File `src/config/database.ts`**
+
 ```typescript
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient({
   datasources: {
@@ -270,6 +286,7 @@ export default prisma;
 ```
 
 **2. File `prisma/schema.prisma`**
+
 ```prisma
 datasource db {
   provider  = "postgresql"
@@ -279,6 +296,7 @@ datasource db {
 ```
 
 **3. Environment Variable**
+
 ```bash
 # Connection Pooler (untuk queries)
 DATABASE_URL="postgresql://...@host:6543/db?pgbouncer=true&connection_limit=1&pool_timeout=0"
@@ -288,6 +306,7 @@ DIRECT_URL="postgresql://...@host:5432/db"
 ```
 
 **Parameter Penting:**
+
 - `pgbouncer=true` - Menggunakan PgBouncer pooler
 - `connection_limit=1` - Max 1 connection per function instance
 - `pool_timeout=0` - Immediate timeout jika pool penuh
@@ -295,6 +314,7 @@ DIRECT_URL="postgresql://...@host:5432/db"
 - Port `5432` - Direct PostgreSQL port
 
 **Cara Kerja:**
+
 ```
 Serverless Function → Prisma Client → PgBouncer Pooler → PostgreSQL
                       (1 connection)   (Pool 15-20)     (Database)
@@ -361,11 +381,13 @@ Total Warm Start: ~110-510ms
 ### 1. Function Logs
 
 **Access:**
+
 ```
 Vercel Dashboard → Deployments → [Latest] → Functions
 ```
 
 **What to check:**
+
 - ✅ Function invocations count
 - ✅ Cold start frequency
 - ✅ Average response time
@@ -373,6 +395,7 @@ Vercel Dashboard → Deployments → [Latest] → Functions
 - ✅ Memory usage
 
 **Sample Log:**
+
 ```
 INFO  Serverless function invoked: GET /api/v1/modules
 INFO  Prisma query: findMany - modules (120ms)
@@ -384,6 +407,7 @@ INFO  Response sent: 200 OK (145ms total)
 **Common Errors:**
 
 **Error: Function timeout (10s exceeded)**
+
 ```
 Solutions:
 1. Optimize database queries (add indexes)
@@ -393,6 +417,7 @@ Solutions:
 ```
 
 **Error: Database connection failed**
+
 ```
 Check:
 1. DATABASE_URL format correct?
@@ -402,6 +427,7 @@ Check:
 ```
 
 **Error: Cannot find module '@prisma/client'**
+
 ```
 Fix:
 1. Ensure "postinstall": "prisma generate" in package.json
@@ -412,6 +438,7 @@ Fix:
 ### 3. Performance Monitoring
 
 **Key Metrics:**
+
 - **P50 latency:** Median response time (target: <500ms warm)
 - **P95 latency:** 95th percentile (target: <2s)
 - **P99 latency:** 99th percentile (includes cold starts)
@@ -419,27 +446,28 @@ Fix:
 - **Cold start rate:** Target <10%
 
 **How to improve:**
+
 ```typescript
 // 1. Minimize cold start by keeping imports small
 // ❌ Don't import unused modules
-import * as lodash from 'lodash';  // Entire library
+import * as lodash from "lodash"; // Entire library
 
 // ✅ Import only what you need
-import { pick } from 'lodash';
+import { pick } from "lodash";
 
 // 2. Database query optimization
 // ❌ Fetch all data
 const modules = await prisma.module.findMany({
-  include: { subMateri: { include: { materi: true } } }
+  include: { subMateri: { include: { materi: true } } },
 });
 
 // ✅ Fetch only needed fields
 const modules = await prisma.module.findMany({
-  select: { id: true, title: true, slug: true }
+  select: { id: true, title: true, slug: true },
 });
 
 // 3. Response caching (for public endpoints)
-res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
+res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate");
 ```
 
 ---
@@ -498,11 +526,13 @@ ab -n 100 -c 10 https://bukadita-api-v2.vercel.app/health
 ## 🔐 Security Best Practices
 
 ### 1. Environment Variables
+
 - ✅ Never commit `.env` to git
 - ✅ Use Vercel Environment Variables
 - ✅ Different values for dev/preview/production
 
 ### 2. JWT Security
+
 ```typescript
 // ✅ Strong secret (min 32 chars)
 JWT_SECRET=your_very_long_random_secret_minimum_32_characters
@@ -515,31 +545,30 @@ JWT_REFRESH_EXPIRY=7d
 ```
 
 ### 3. CORS Configuration
+
 ```typescript
 // ✅ Whitelist specific origins
 const corsOptions = {
-  origin: [
-    process.env.ADMIN_URL,
-    process.env.USER_URL,
-  ],
+  origin: [process.env.ADMIN_URL, process.env.USER_URL],
   credentials: true,
 };
 
 // ❌ Don't allow all origins in production
-origin: '*'  // DANGER!
+origin: "*"; // DANGER!
 ```
 
 ### 4. Rate Limiting (Optional)
+
 ```typescript
 // Consider re-enabling for production
-import rateLimit from 'express-rate-limit';
+import rateLimit from "express-rate-limit";
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
 });
 
-app.use('/api', limiter);
+app.use("/api", limiter);
 ```
 
 ---
@@ -547,15 +576,18 @@ app.use('/api', limiter);
 ## 📚 Reference
 
 ### Vercel Docs
+
 - Serverless Functions: https://vercel.com/docs/functions
 - Environment Variables: https://vercel.com/docs/projects/environment-variables
 - Build Configuration: https://vercel.com/docs/build-step
 
 ### Prisma + Vercel
+
 - Best Practices: https://www.prisma.io/docs/guides/deployment/deployment-guides/deploying-to-vercel
 - Connection Pooling: https://www.prisma.io/docs/guides/performance-and-optimization/connection-management
 
 ### Supabase
+
 - Connection Pooler: https://supabase.com/docs/guides/database/connecting-to-postgres#connection-pooler
 - Performance: https://supabase.com/docs/guides/platform/performance
 
