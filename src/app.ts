@@ -46,9 +46,48 @@ const getAllowedOrigins = () => {
 };
 
 const corsOptions = {
-  origin: getAllowedOrigins(),
+  origin: (
+    origin: string | undefined,
+    callback: (err: Error | null, allow?: boolean) => void
+  ) => {
+    const allowedOrigins = getAllowedOrigins();
+
+    // Allow requests with no origin (like mobile apps, Postman, curl)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow all *.vercel.app domains in production
+    if (
+      process.env.NODE_ENV === "production" &&
+      origin.endsWith(".vercel.app")
+    ) {
+      return callback(null, true);
+    }
+
+    // Allow localhost in development
+    if (
+      process.env.NODE_ENV === "development" &&
+      (origin.startsWith("http://localhost") ||
+        origin.startsWith("http://127.0.0.1"))
+    ) {
+      return callback(null, true);
+    }
+
+    // Reject other origins
+    logger.warn(`CORS: Blocked request from origin: ${origin}`);
+    callback(new Error("Not allowed by CORS"));
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  exposedHeaders: ["Content-Range", "X-Content-Range"],
+  maxAge: 86400, // 24 hours
 };
 app.use(cors(corsOptions));
 
