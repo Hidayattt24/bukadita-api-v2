@@ -37,6 +37,7 @@
 ### Option 1: Deploy via Vercel Dashboard (Recommended)
 
 #### Step 1: Login & Import
+
 1. Buka https://vercel.com
 2. Login dengan GitHub account
 3. Klik **"Add New Project"**
@@ -44,6 +45,7 @@
 5. Klik **"Import"**
 
 #### Step 2: Configure Build Settings
+
 ```
 Framework Preset: Other
 Root Directory: ./
@@ -54,9 +56,11 @@ Node.js Version: 18.x atau 20.x
 ```
 
 #### Step 3: Environment Variables
+
 Tambahkan semua ini di **Settings → Environment Variables**:
 
 **CRITICAL (Wajib):**
+
 ```bash
 NODE_ENV=production
 DATABASE_URL=postgresql://postgres.fjbacahbbicjggdzmern:bismillahbukadita@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&pool_timeout=0
@@ -65,6 +69,7 @@ JWT_SECRET=bukadita_v2_super_secret_key_minimum_32_chars_long_change_in_producti
 ```
 
 **Supabase:**
+
 ```bash
 SUPABASE_URL=https://fjbacahbbicjggdzmern.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqYmFjYWhiYmljamdnZHptZXJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMTgxMTgsImV4cCI6MjA3NzU5NDExOH0.rZnLSehsQdykV-6Gz6n5QxJIilWo2kdxAVigKtljfIc
@@ -72,18 +77,21 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 ```
 
 **JWT Config:**
+
 ```bash
 JWT_ACCESS_EXPIRY=15m
 JWT_REFRESH_EXPIRY=7d
 ```
 
 **CORS (Update setelah frontend deploy):**
+
 ```bash
 ADMIN_URL=https://bukadita-admin-v2.vercel.app
 USER_URL=https://bukadita-user-v2.vercel.app
 ```
 
 **Optional:**
+
 ```bash
 PORT=8080
 LOG_LEVEL=info
@@ -94,6 +102,7 @@ RATE_LIMIT_MAX_REQUESTS=100
 **Untuk setiap variable:** Centang **Production**, **Preview**, **Development**
 
 #### Step 4: Deploy
+
 1. Klik **"Deploy"**
 2. Tunggu 2-3 menit
 3. Status akan menjadi **"Ready"** ✅
@@ -121,11 +130,13 @@ vercel --prod
 ## 🧪 Testing Setelah Deploy
 
 ### 1. Health Check
+
 ```bash
 curl https://bukadita-api-v2.vercel.app/health
 ```
 
 **Expected Response:**
+
 ```json
 {
   "error": false,
@@ -140,11 +151,13 @@ curl https://bukadita-api-v2.vercel.app/health
 ```
 
 ### 2. Modules Endpoint
+
 ```bash
 curl https://bukadita-api-v2.vercel.app/api/v1/modules
 ```
 
 ### 3. Auth Test (Register)
+
 ```bash
 curl -X POST https://bukadita-api-v2.vercel.app/api/v1/auth/register \
   -H "Content-Type: application/json" \
@@ -161,22 +174,26 @@ curl -X POST https://bukadita-api-v2.vercel.app/api/v1/auth/register \
 ## 🔍 Monitoring & Debugging
 
 ### Check Build Logs
+
 ```
 Vercel Dashboard → Deployments → [Latest] → Building
 ```
 
 Pastikan:
+
 - ✅ Dependencies installed
 - ✅ Prisma Client generated
 - ✅ TypeScript compiled
 - ✅ No errors
 
 ### Check Function Logs
+
 ```
 Vercel Dashboard → Deployments → [Latest] → Functions → View logs
 ```
 
 ### Real-time Logs (CLI)
+
 ```bash
 vercel logs --follow
 ```
@@ -186,11 +203,13 @@ vercel logs --follow
 ## 📊 Struktur Endpoint API
 
 ### Health Check
+
 ```
 GET /health
 ```
 
 ### Public Endpoints
+
 ```
 POST /api/v1/auth/register
 POST /api/v1/auth/login
@@ -200,6 +219,7 @@ GET  /api/v1/modules/:id
 ```
 
 ### Protected Endpoints (Require JWT)
+
 ```
 # User Progress
 GET    /api/v1/progress/modules
@@ -223,6 +243,7 @@ PUT    /api/v1/users/profile
 ```
 
 ### Admin Endpoints (Require admin/superadmin role)
+
 ```
 # Module Management
 POST   /api/v1/admin/modules
@@ -249,12 +270,14 @@ DELETE /api/v1/admin/users/:id
 ### Error: 500 FUNCTION_INVOCATION_FAILED
 
 **Check:**
+
 1. Environment variables lengkap? ✅
 2. DATABASE_URL format benar? ✅
 3. Prisma Client ter-generate? ✅
 4. Function logs untuk error detail
 
 **Solutions:**
+
 ```bash
 # Check logs
 vercel logs [deployment-url]
@@ -266,11 +289,13 @@ vercel --prod --force
 ### Error: Database Connection Timeout
 
 **Fix DATABASE_URL:**
+
 ```
 postgresql://...?pgbouncer=true&connection_limit=1&pool_timeout=0
 ```
 
 **Vercel Serverless Requirements:**
+
 - ✅ Connection pooling (pgbouncer=true)
 - ✅ Connection limit = 1 per function
 - ✅ Pool timeout = 0 (immediate)
@@ -278,6 +303,7 @@ postgresql://...?pgbouncer=true&connection_limit=1&pool_timeout=0
 ### Error: CORS Blocked
 
 **Update Environment Variables:**
+
 1. Set ADMIN_URL = `https://your-admin.vercel.app`
 2. Set USER_URL = `https://your-user.vercel.app`
 3. **No trailing slash!**
@@ -286,6 +312,7 @@ postgresql://...?pgbouncer=true&connection_limit=1&pool_timeout=0
 ### Error: Cannot find module '@prisma/client'
 
 **Fix:**
+
 ```bash
 # Make sure package.json has:
 "postinstall": "prisma generate"
@@ -298,29 +325,36 @@ postgresql://...?pgbouncer=true&connection_limit=1&pool_timeout=0
 ## 📝 Post-Deployment Tasks
 
 ### 1. Get API URL
+
 ```
 https://bukadita-api-v2.vercel.app
 ```
 
 ### 2. Update Frontend .env
+
 **bukadita-admin-v2:**
+
 ```env
 NEXT_PUBLIC_API_URL=https://bukadita-api-v2.vercel.app/api/v1
 ```
 
 **bukadita-user-v2:**
+
 ```env
 NEXT_PUBLIC_API_URL=https://bukadita-api-v2.vercel.app/api/v1
 ```
 
 ### 3. Update Backend CORS
+
 Setelah frontend deploy, update di Vercel:
+
 ```env
 ADMIN_URL=https://bukadita-admin-v2.vercel.app
 USER_URL=https://bukadita-user-v2.vercel.app
 ```
 
 ### 4. Test Full Integration
+
 - [ ] Login from admin frontend
 - [ ] Login from user frontend
 - [ ] CRUD operations
@@ -335,6 +369,7 @@ USER_URL=https://bukadita-user-v2.vercel.app
 ### ⚠️ IMPORTANT - Sebelum Production:
 
 1. **Ganti JWT_SECRET** dengan random string (min 32 chars)
+
    ```bash
    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
@@ -352,16 +387,19 @@ USER_URL=https://bukadita-user-v2.vercel.app
 ## 📞 Support
 
 ### Vercel Issues
+
 - Status: https://www.vercel-status.com/
 - Docs: https://vercel.com/docs
 - Support: https://vercel.com/support
 
 ### Database Issues
+
 - Supabase Dashboard: https://app.supabase.com
 - Check connection pooler status
 - Check database logs
 
 ### API Issues
+
 ```bash
 # Check function logs
 vercel logs [deployment-url] --follow
@@ -390,6 +428,6 @@ Vercel Dashboard → Deployments → Build Logs
 **Status:** SIAP DEPLOY 🚀  
 **Last Updated:** November 2, 2025  
 **Build Status:** ✅ SUCCESS  
-**Configuration:** ✅ VALID  
+**Configuration:** ✅ VALID
 
 **Next Step:** Deploy via Vercel Dashboard atau CLI
