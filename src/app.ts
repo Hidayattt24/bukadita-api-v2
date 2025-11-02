@@ -47,6 +47,11 @@ app.use(
   })
 );
 
+// Root redirect to health
+app.get("/", (req, res) => {
+  res.redirect("/health");
+});
+
 // Health check
 app.get("/health", (req, res) => {
   res.json({
@@ -63,6 +68,61 @@ app.get("/health", (req, res) => {
 
 // API routes
 const API_PREFIX = "/api/v1";
+
+// API documentation endpoint
+app.get(`${API_PREFIX}`, (req, res) => {
+  res.json({
+    error: false,
+    code: "API_INFO",
+    message: "BUKADITA API v2 - Learning Platform for Community Health Cadres",
+    data: {
+      version: "2.0.0",
+      environment: process.env.NODE_ENV,
+      endpoints: {
+        public: {
+          health: "GET /health",
+          auth: {
+            register: "POST /api/v1/auth/register",
+            login: "POST /api/v1/auth/login",
+            refresh: "POST /api/v1/auth/refresh",
+          },
+          modules: {
+            list: "GET /api/v1/modules",
+            detail: "GET /api/v1/modules/:id",
+          },
+        },
+        protected: {
+          progress: {
+            modules: "GET /api/v1/progress/modules",
+            moduleDetail: "GET /api/v1/progress/modules/:moduleId",
+            updateModule: "POST /api/v1/progress/modules/:moduleId",
+            updateSubMaterial: "POST /api/v1/progress/sub-materials/:subMateriId",
+          },
+          quizzes: {
+            get: "GET /api/v1/quizzes/:moduleId",
+            submit: "POST /api/v1/quizzes/:quizId/submit",
+          },
+          notes: {
+            list: "GET /api/v1/notes",
+            create: "POST /api/v1/notes",
+            update: "PUT /api/v1/notes/:id",
+            delete: "DELETE /api/v1/notes/:id",
+          },
+          profile: {
+            get: "GET /api/v1/users/profile",
+            update: "PUT /api/v1/users/profile",
+          },
+        },
+        admin: {
+          modules: "GET|POST|PUT|DELETE /api/v1/admin/modules",
+          quizzes: "GET|POST|PUT|DELETE /api/v1/admin/quizzes",
+          users: "GET|PUT|DELETE /api/v1/admin/users",
+        },
+      },
+      documentation: "https://github.com/Hidayattt24/bukadita-api-v2",
+    },
+  });
+});
 
 // Mount routes
 app.use(`${API_PREFIX}/auth`, authRoutes);
