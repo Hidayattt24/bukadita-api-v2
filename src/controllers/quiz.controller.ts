@@ -6,7 +6,10 @@ import * as quizService from "../services/quiz.service";
 export const getQuizzesByModule = async (req: AuthRequest, res: Response) => {
   try {
     const { moduleId } = req.params;
-    const result = await quizService.getQuizzesByModule(moduleId);
+    // ✅ NEW: Support query param for admin to see unpublished quizzes
+    const includeUnpublished = req.query.includeUnpublished === "true";
+
+    const result = await quizService.getQuizzesByModule(moduleId, includeUnpublished);
     sendSuccess(
       res,
       API_CODES.QUIZ_FETCH_SUCCESS,

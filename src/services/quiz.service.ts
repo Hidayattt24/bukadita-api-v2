@@ -1,9 +1,19 @@
 import prisma from "../config/database";
 import * as progressService from "./progress.service";
 
-export const getQuizzesByModule = async (moduleId: string) => {
+export const getQuizzesByModule = async (
+  moduleId: string,
+  includeUnpublished: boolean = false // ✅ NEW: Option for admin
+) => {
+  const whereClause: any = { module_id: moduleId };
+
+  // Only filter by published if not admin mode
+  if (!includeUnpublished) {
+    whereClause.published = true;
+  }
+
   const quizzes = await prisma.materisQuiz.findMany({
-    where: { module_id: moduleId, published: true },
+    where: whereClause,
     include: {
       subMateri: {
         select: {
@@ -81,7 +91,35 @@ export const startQuiz = async (userId: string, quizId: string) => {
     throw new Error("Quiz is not published");
   }
 
-  // Create quiz attempt
+  // ✅ FIX: Check if there's already an ongoing attempt (started but not completed)
+  const existingOngoingAttempt = await prisma.quizAttempt.findFirst({
+    where: {
+      quiz_id: quizId,
+      user_id: userId,
+      completed_at: null, // Not completed yet (if completed_at is null, it means started but not finished)
+    },
+    orderBy: { started_at: "desc" },
+  });
+
+  // If there's an ongoing attempt, return it instead of creating a new one
+  if (existingOngoingAttempt) {
+    console.log(
+      `[startQuiz] ✅ Found existing ongoing attempt ${existingOngoingAttempt.id}, returning it instead of creating new one`
+    );
+    return {
+      attempt_id: existingOngoingAttempt.id,
+      quiz_id: quizId,
+      total_questions: quiz.questions.length,
+      time_limit_seconds: quiz.time_limit_seconds,
+      started_at: existingOngoingAttempt.started_at,
+      is_existing: true, // Flag to indicate this is an existing attempt
+    };
+  }
+
+  // Create new quiz attempt only if no ongoing attempt exists
+  console.log(
+    `[startQuiz] 🆕 Creating new quiz attempt for user ${userId}, quiz ${quizId}`
+  );
   const attempt = await prisma.quizAttempt.create({
     data: {
       quiz_id: quizId,
@@ -97,6 +135,7 @@ export const startQuiz = async (userId: string, quizId: string) => {
     total_questions: quiz.questions.length,
     time_limit_seconds: quiz.time_limit_seconds,
     started_at: attempt.started_at,
+    is_existing: false,
   };
 };
 
