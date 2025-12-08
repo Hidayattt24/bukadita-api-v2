@@ -274,3 +274,47 @@ export const createMissingProfile = async (
 
   return profile;
 };
+
+export const refreshAccessToken = async (refreshToken: string) => {
+  try {
+    // Import verifyRefreshToken from jwt.util
+    const { verifyRefreshToken } = require("../utils/jwt.util");
+
+    // Verify refresh token
+    const payload = verifyRefreshToken(refreshToken);
+
+    logger.info("Refresh token verified for user:", payload.userId);
+
+    // Get user profile to ensure user still exists
+    const profile = await prisma.profile.findUnique({
+      where: { id: payload.userId },
+    });
+
+    if (!profile) {
+      throw new Error("User not found");
+    }
+
+    // Generate new access token
+    const newPayload = {
+      userId: profile.id,
+      email: profile.email ?? "",
+      role: profile.role,
+    };
+    const access_token = generateAccessToken(newPayload);
+
+    logger.info("New access token generated for user:", profile.id);
+
+    return {
+      access_token,
+      expires_at: getTokenExpiry(process.env.JWT_ACCESS_EXPIRY || "7d"),
+      user: {
+        id: profile.id,
+        email: profile.email,
+        profile,
+      },
+    };
+  } catch (error) {
+    logger.error("Refresh token error:", error);
+    throw new Error("Invalid or expired refresh token");
+  }
+};

@@ -1,8 +1,8 @@
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
-const JWT_ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || "15m";
-const JWT_REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || "7d";
+const JWT_ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || "7d";
+const JWT_REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || "30d";
 
 export interface JWTPayload {
   userId: string;
@@ -24,6 +24,22 @@ export const generateRefreshToken = (payload: JWTPayload): string => {
 
 export const verifyToken = (token: string): JWTPayload => {
   return jwt.verify(token, JWT_SECRET) as JWTPayload;
+};
+
+export const verifyRefreshToken = (token: string): JWTPayload => {
+  try {
+    return jwt.verify(token, JWT_SECRET) as JWTPayload;
+  } catch (error) {
+    throw new Error("Invalid or expired refresh token");
+  }
+};
+
+export const decodeToken = (token: string): JWTPayload | null => {
+  try {
+    return jwt.decode(token) as JWTPayload;
+  } catch (error) {
+    return null;
+  }
 };
 
 export const getTokenExpiry = (expiresIn: string): number => {

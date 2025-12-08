@@ -35,12 +35,24 @@ export const refresh = async (
   res: Response
 ): Promise<void> => {
   try {
-    // Implement refresh token logic here
+    const { refresh_token } = req.body;
+
+    if (!refresh_token) {
+      sendError(
+        res,
+        "REFRESH_TOKEN_REQUIRED",
+        "Refresh token is required",
+        400
+      );
+      return;
+    }
+
+    const result = await authService.refreshAccessToken(refresh_token);
     sendSuccess(
       res,
       API_CODES.AUTH_REFRESH_SUCCESS,
       "Token refreshed successfully",
-      {}
+      result
     );
   } catch (error: any) {
     sendError(res, API_CODES.AUTH_TOKEN_EXPIRED, error.message, 401);

@@ -46,12 +46,37 @@ export const requireAuth = async (
     req.user = { ...payload, profile };
     console.log("✅ [AUTH] User authenticated:", req.user.email, req.user.role);
     next();
-  } catch (error) {
+  } catch (error: any) {
     console.log("❌ [AUTH] Error:", error);
+
+    // Distinguish between expired and invalid tokens
+    if (error.name === "TokenExpiredError") {
+      console.log("⏰ [AUTH] Token has expired");
+      sendError(
+        res,
+        API_CODES.AUTH_TOKEN_EXPIRED,
+        "Token has expired. Please refresh your token or login again.",
+        401
+      );
+      return;
+    }
+
+    if (error.name === "JsonWebTokenError") {
+      console.log("🔒 [AUTH] Invalid token");
+      sendError(
+        res,
+        API_CODES.UNAUTHORIZED,
+        "Invalid token. Please login again.",
+        401
+      );
+      return;
+    }
+
+    // Generic error
     sendError(
       res,
-      API_CODES.AUTH_TOKEN_EXPIRED,
-      "Invalid or expired token",
+      API_CODES.UNAUTHORIZED,
+      "Authentication failed. Please login again.",
       401
     );
   }
