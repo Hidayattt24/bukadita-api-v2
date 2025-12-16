@@ -1,8 +1,25 @@
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
-const JWT_ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || "7d";
-const JWT_REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || "30d";
+
+// Validate and get expiry - handle empty string case
+const getValidExpiry = (envValue: string | undefined, defaultValue: string): string => {
+  if (!envValue || envValue.trim() === "") {
+    return defaultValue;
+  }
+  // Validate format (e.g., "7d", "30d", "1h", "60")
+  const isValidFormat = /^(\d+[smhd]|\d+)$/.test(envValue.trim());
+  return isValidFormat ? envValue.trim() : defaultValue;
+};
+
+const JWT_ACCESS_EXPIRY = getValidExpiry(process.env.JWT_ACCESS_EXPIRY, "7d");
+const JWT_REFRESH_EXPIRY = getValidExpiry(process.env.JWT_REFRESH_EXPIRY, "30d");
+
+// Log the expiry values for debugging (only in development)
+if (process.env.NODE_ENV !== "production") {
+  console.log("🔑 JWT_ACCESS_EXPIRY:", JWT_ACCESS_EXPIRY);
+  console.log("🔑 JWT_REFRESH_EXPIRY:", JWT_REFRESH_EXPIRY);
+}
 
 export interface JWTPayload {
   userId: string;
