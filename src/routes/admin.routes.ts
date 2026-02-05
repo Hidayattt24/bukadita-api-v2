@@ -19,6 +19,8 @@ router.get("/quiz-attempts/:attemptId", adminController.getQuizAttemptDetail);
 
 // Statistics
 router.get("/progress/stats", adminController.getProgressStats);
+router.get("/quiz-performance-detailed", adminController.getQuizPerformanceDetailed);
+router.get("/recent-activities-classified", adminController.getRecentActivitiesClassified);
 
 // User management
 router.get("/users", adminController.getAllUsers);
