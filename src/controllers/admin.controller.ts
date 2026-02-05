@@ -379,3 +379,49 @@ export const deleteUser = async (
     sendError(res, "USER_DELETE_ERROR", error.message, 400);
   }
 };
+
+// Get quiz performance detailed
+export const getQuizPerformanceDetailed = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { module_id } = req.query;
+
+    const result = await adminService.getQuizPerformanceDetailed(
+      module_id as string | undefined
+    );
+
+    sendSuccess(
+      res,
+      "QUIZ_PERFORMANCE_DETAILED_SUCCESS",
+      "Quiz performance details fetched successfully",
+      result
+    );
+  } catch (error: any) {
+    sendError(res, "QUIZ_PERFORMANCE_DETAILED_ERROR", error.message, 500);
+  }
+};
+
+// Get recent activities classified (deduplicated by user)
+export const getRecentActivitiesClassified = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { limit = 20 } = req.query;
+
+    const result = await adminService.getRecentActivitiesClassified(
+      Number(limit)
+    );
+
+    sendSuccess(
+      res,
+      "RECENT_ACTIVITIES_CLASSIFIED_SUCCESS",
+      "Recent activities fetched successfully",
+      result
+    );
+  } catch (error: any) {
+    sendError(res, "RECENT_ACTIVITIES_CLASSIFIED_ERROR", error.message, 500);
+  }
+};

@@ -870,3 +870,288 @@ export const deleteUser = async (userId: string) => {
     throw new Error("Failed to delete user");
   }
 };
+
+// Get quiz performance detailed (per module with users)
+export const getQuizPerformanceDetailed = async (moduleId?: string) => {
+  try {
+    // Get all modules or specific module
+    const modules = await prisma.module.findMany({
+      where: {
+        published: true,
+        ...(moduleId && { id: moduleId }),
+      },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        quizzes: {
+          where: { published: true },
+          select: {
+            id: true,
+            title: true,
+            passing_score: true,
+            attempts: {
+              where: {
+                completed_at: { not: null },
+              },
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    full_name: true,
+                    phone: true,
+                  },
+                },
+              },
+              orderBy: {
+                completed_at: "desc",
+              },
+            },
+          },
+        },
+      },
+    }).catch(() => []);
+
+    const performanceData = modules.map((module) => {
+      const quizStats = module.quizzes.map((quiz) => {
+        const totalAttempts = quiz.attempts.length;
+        const passedAttempts = quiz.attempts.filter((a) => a.passed).length;
+        const failedAttempts = totalAttempts - passedAttempts;
+        const passRate = totalAttempts > 0
+          ? Math.round((passedAttempts / totalAttempts) * 100)
+          : 0;
+
+        // Get all attempts per user (not aggregated)
+        const userAttemptsMap = new Map();
+        quiz.attempts.forEach((attempt) => {
+          const userId = attempt.user_id;
+
+          if (!userAttemptsMap.has(userId)) {
+            userAttemptsMap.set(userId, {
+              user_id: attempt.user_id,
+              user_name: attempt.user.full_name,
+              user_phone: attempt.user.phone,
+              attempts: [],
+            });
+          }
+
+          const userRecord = userAttemptsMap.get(userId);
+          userRecord.attempts.push({
+            attempt_id: attempt.id,
+            score: Number(attempt.score),
+            passed: attempt.passed,
+            total_questions: attempt.total_questions,
+            correct_answers: attempt.correct_answers,
+            completed_at: attempt.completed_at,
+          });
+        });
+
+        // Sort attempts by completed_at (most recent first) and calculate best score
+        const userResults = Array.from(userAttemptsMap.values()).map((userRecord) => {
+          userRecord.attempts.sort((a: any, b: any) =>
+            new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
+          );
+
+          const bestScore = Math.max(...userRecord.attempts.map((a: any) => a.score));
+          const bestAttempt = userRecord.attempts.find((a: any) => a.score === bestScore);
+
+          return {
+            ...userRecord,
+            best_score: bestScore,
+            passed: bestAttempt?.passed || false,
+            total_attempts: userRecord.attempts.length,
+          };
+        });
+
+        return {
+          quiz_id: quiz.id,
+          quiz_title: quiz.title,
+          passing_score: quiz.passing_score,
+          total_attempts: totalAttempts,
+          passed_count: passedAttempts,
+          failed_count: failedAttempts,
+          pass_rate: passRate,
+          unique_users: userResults.length,
+          user_results: userResults.sort((a, b) => b.best_score - a.best_score),
+        };
+      });
+
+      const totalQuizzes = quizStats.length;
+      const totalAttempts = quizStats.reduce((sum, q) => sum + q.total_attempts, 0);
+      const totalPassed = quizStats.reduce((sum, q) => sum + q.passed_count, 0);
+      const totalFailed = quizStats.reduce((sum, q) => sum + q.failed_count, 0);
+      const avgPassRate = totalQuizzes > 0
+        ? Math.round(quizStats.reduce((sum, q) => sum + q.pass_rate, 0) / totalQuizzes)
+        : 0;
+
+      return {
+        module_id: module.id,
+        module_title: module.title,
+        module_slug: module.slug,
+        total_quizzes: totalQuizzes,
+        summary: {
+          total_attempts: totalAttempts,
+          total_passed: totalPassed,
+          total_failed: totalFailed,
+          average_pass_rate: avgPassRate,
+        },
+        quizzes: quizStats,
+      };
+    });
+
+    return {
+      modules: performanceData,
+      overall_stats: {
+        total_modules: performanceData.length,
+        total_quizzes: performanceData.reduce((sum, m) => sum + m.total_quizzes, 0),
+        total_attempts: performanceData.reduce((sum, m) => sum + m.summary.total_attempts, 0),
+        total_passed: performanceData.reduce((sum, m) => sum + m.summary.total_passed, 0),
+        total_failed: performanceData.reduce((sum, m) => sum + m.summary.total_failed, 0),
+      },
+      last_updated: new Date().toISOString(),
+    };
+  } catch (error) {
+    logger.error("Error fetching quiz performance detailed:", error);
+    throw new Error("Failed to fetch quiz performance details");
+  }
+};
+
+// Get recent activities with user classification (deduplicated)
+export const getRecentActivitiesClassified = async (limit: number = 20) => {
+  try {
+    // Get all recent quiz attempts
+    const recentAttempts = await prisma.quizAttempt.findMany({
+      where: {
+        completed_at: { not: null },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            full_name: true,
+            profil_url: true,
+          },
+        },
+        quiz: {
+          select: {
+            title: true,
+            module: {
+              select: {
+                title: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        completed_at: "desc",
+      },
+      take: 100, // Take more to process
+    }).catch(() => []);
+
+    // Get all recent module completions
+    const recentCompletions = await prisma.userModuleProgress.findMany({
+      where: {
+        status: "completed",
+        completed_at: { not: null },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            full_name: true,
+            profil_url: true,
+          },
+        },
+        module: {
+          select: {
+            title: true,
+          },
+        },
+      },
+      orderBy: {
+        completed_at: "desc",
+      },
+      take: 100,
+    }).catch(() => []);
+
+    // Combine and classify by user
+    const userActivityMap = new Map();
+
+    // Process quiz attempts
+    recentAttempts.forEach((attempt) => {
+      const userId = attempt.user_id;
+      const activityTime = attempt.completed_at!.getTime();
+
+      if (!userActivityMap.has(userId) ||
+          activityTime > userActivityMap.get(userId).timestamp) {
+        userActivityMap.set(userId, {
+          user_id: userId,
+          user_name: attempt.user.full_name || "Unknown User",
+          user_avatar: attempt.user.profil_url,
+          activity_type: "quiz_attempt",
+          activity_detail: attempt.quiz.title,
+          module_name: attempt.quiz.module?.title,
+          passed: attempt.passed,
+          score: Number(attempt.score),
+          timestamp: activityTime,
+          completed_at: attempt.completed_at,
+        });
+      }
+    });
+
+    // Process module completions
+    recentCompletions.forEach((completion) => {
+      const userId = completion.user_id;
+      const activityTime = completion.completed_at!.getTime();
+
+      if (!userActivityMap.has(userId) ||
+          activityTime > userActivityMap.get(userId).timestamp) {
+        userActivityMap.set(userId, {
+          user_id: userId,
+          user_name: completion.user.full_name || "Unknown User",
+          user_avatar: completion.user.profil_url,
+          activity_type: "module_completed",
+          activity_detail: completion.module.title,
+          module_name: completion.module.title,
+          progress_percent: completion.progress_percent,
+          timestamp: activityTime,
+          completed_at: completion.completed_at,
+        });
+      }
+    });
+
+    // Convert to array and sort by timestamp
+    const classifiedActivities = Array.from(userActivityMap.values())
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, limit)
+      .map((activity) => {
+        const now = new Date();
+        const diffMs = now.getTime() - activity.timestamp;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        let relativeTime = "";
+        if (diffMins < 1) {
+          relativeTime = "Baru saja";
+        } else if (diffMins < 60) {
+          relativeTime = `${diffMins} menit lalu`;
+        } else if (diffHours < 24) {
+          relativeTime = `${diffHours} jam lalu`;
+        } else {
+          relativeTime = `${diffDays} hari lalu`;
+        }
+
+        return {
+          ...activity,
+          relative_time: relativeTime,
+        };
+      });
+
+    return classifiedActivities;
+  } catch (error) {
+    logger.error("Error fetching classified activities:", error);
+    throw new Error("Failed to fetch recent activities");
+  }
+};
