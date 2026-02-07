@@ -522,10 +522,33 @@ export const getAllUsers = async (params: {
 
     if (role) whereConditions.role = role;
     if (search) {
-      whereConditions.OR = [
+      // Normalize phone search to handle both 08xxx and +62xxx formats
+      const searchConditions: any[] = [
         { full_name: { contains: search, mode: "insensitive" } },
         { phone: { contains: search } },
       ];
+
+      // If search starts with "08", also search for "+62" version
+      if (search.startsWith("08")) {
+        const normalizedPhone = "+62" + search.substring(1);
+        searchConditions.push({ phone: { contains: normalizedPhone } });
+      }
+      // If search starts with "+62", also search for "08" version
+      else if (search.startsWith("+62")) {
+        const normalizedPhone = "0" + search.substring(3);
+        searchConditions.push({ phone: { contains: normalizedPhone } });
+      }
+      // If search starts with "62" (without +), also search for "08" and "+62" versions
+      else if (search.startsWith("62") && !search.startsWith("620")) {
+        const normalizedPhone1 = "0" + search.substring(2);
+        const normalizedPhone2 = "+" + search;
+        searchConditions.push(
+          { phone: { contains: normalizedPhone1 } },
+          { phone: { contains: normalizedPhone2 } }
+        );
+      }
+
+      whereConditions.OR = searchConditions;
     }
 
     const [users, total] = await Promise.all([
@@ -714,6 +737,9 @@ export const createUser = async (userData: {
   full_name: string;
   phone?: string;
   role: string;
+  address?: string;
+  date_of_birth?: string;
+  profil_url?: string;
 }) => {
   try {
     const bcrypt = await import("bcrypt");
@@ -783,7 +809,18 @@ export const createUser = async (userData: {
       updated_at: new Date().toISOString(),
     });
 
-    // Create profile
+    // Convert date_of_birth to ISO DateTime if provided
+    let dateOfBirth: string | null = null;
+    if (userData.date_of_birth) {
+      const dateOnly = userData.date_of_birth;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+        dateOfBirth = new Date(dateOnly + 'T00:00:00.000Z').toISOString();
+      } else {
+        dateOfBirth = userData.date_of_birth;
+      }
+    }
+
+    // Create profile with all fields
     const profile = await prisma.profile.create({
       data: {
         id: authData.user.id,
@@ -791,6 +828,9 @@ export const createUser = async (userData: {
         full_name: userData.full_name,
         phone: normalizedPhone,
         role: userData.role,
+        address: userData.address || null,
+        date_of_birth: dateOfBirth,
+        profil_url: userData.profil_url || null,
       },
     });
 
@@ -829,10 +869,21 @@ export const updateUser = async (
   }
 ) => {
   try {
+    // Convert date_of_birth to ISO DateTime if provided
+    const dataToUpdate: any = { ...updateData };
+    
+    if (dataToUpdate.date_of_birth) {
+      // Convert YYYY-MM-DD to ISO DateTime (set to midnight UTC)
+      const dateOnly = dataToUpdate.date_of_birth;
+      if (dateOnly && /^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+        dataToUpdate.date_of_birth = new Date(dateOnly + 'T00:00:00.000Z').toISOString();
+      }
+    }
+
     const user = await prisma.profile.update({
       where: { id: userId },
       data: {
-        ...updateData,
+        ...dataToUpdate,
         updated_at: new Date(),
       },
     });

@@ -266,7 +266,7 @@ export const createUser = async (
     console.log("👤 [CREATE USER] User:", req.user?.email, req.user?.role);
     console.log("📦 [CREATE USER] Body:", req.body);
 
-    const { email, password, full_name, phone, role } = req.body;
+    const { email, password, full_name, phone, role, address, date_of_birth, profil_url } = req.body;
 
     // Validate required fields - email OR phone must be provided
     if ((!email && !phone) || !password || !full_name) {
@@ -299,6 +299,9 @@ export const createUser = async (
       full_name,
       phone,
       role: role || "pengguna",
+      address,
+      date_of_birth,
+      profil_url,
     });
     console.log("✅ [CREATE USER] User created successfully:", result.id);
 
