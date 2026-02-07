@@ -2,6 +2,7 @@ node_modules
 dist
 .env
 .env.local
+.env.production
 .env.*.local
 *.log
 npm-debug.log*
@@ -18,4 +19,3 @@ prisma/migrations
 node_modules/
 .vercel
 .env*.local
-.env*.production
