@@ -25,6 +25,8 @@ router.get("/materials/:id/access", progressController.checkMaterialAccess);
 
 // Poin progress
 router.post("/poins/:id/complete", progressController.completePoin);
+router.post("/poins/:id/scroll-complete", progressController.markPoinScrollCompleted);
+router.get("/poins/:id/scroll-status", progressController.getPoinScrollStatus);
 
 // Quiz progress
 router.get("/quiz/:id", progressController.getQuizProgress);

@@ -8,6 +8,7 @@ const router = Router();
 
 router.post("/register", validate(registerSchema), authController.register);
 router.post("/login", validate(loginSchema), authController.login);
+router.post("/admin-login", validate(loginSchema), authController.adminLogin);
 router.post("/refresh", authController.refresh);
 router.post("/logout", requireAuth, authController.logout);
 router.post("/profile", requireAuth, authController.upsertProfile);

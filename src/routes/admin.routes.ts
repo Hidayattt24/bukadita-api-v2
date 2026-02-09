@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as adminController from "../controllers/admin.controller";
+import * as progressMonitoringController from "../controllers/progress-monitoring.controller";
 import { requireAuth } from "../middlewares/auth.middleware";
 import { requireAdmin, requireSuperAdmin } from "../middlewares/role.middleware";
 
@@ -9,7 +10,15 @@ const router = Router();
 router.use(requireAuth);
 router.use(requireAdmin);
 
-// Progress monitoring
+// Progress monitoring - NEW ENDPOINTS
+router.get("/progress-monitoring/stats", progressMonitoringController.getProgressMonitoringStats);
+router.get("/progress-monitoring/module-stats", progressMonitoringController.getModuleCompletionStats);
+router.get("/progress-monitoring/stuck-users/:moduleId", progressMonitoringController.getStuckUsersByModule);
+router.get("/progress-monitoring/users", progressMonitoringController.getUserProgressList);
+router.get("/progress-monitoring/users/:userId", progressMonitoringController.getUserDetailProgress);
+router.get("/progress-monitoring/reading-progress", progressMonitoringController.getReadingProgressStats);
+
+// Progress monitoring - OLD ENDPOINTS (keep for backward compatibility)
 router.get("/progress", adminController.getAllUsersProgress);
 router.get("/users/:userId/progress", adminController.getUserProgress);
 
