@@ -26,6 +26,25 @@ export const login = async (req: AuthRequest, res: Response): Promise<void> => {
     const result = await authService.login(req.body);
     sendSuccess(res, API_CODES.AUTH_LOGIN_SUCCESS, "Login successful", result);
   } catch (error: any) {
+    // Check if error is about admin trying to login to user portal
+    if (error.code === "ADMIN_LOGIN_REQUIRED") {
+      sendError(
+        res, 
+        "ADMIN_LOGIN_REQUIRED", 
+        "Akun Anda adalah akun Ketua/Pembina Posyandu. Silakan gunakan portal admin untuk login.", 
+        403
+      );
+      return;
+    }
+    sendError(res, API_CODES.AUTH_INVALID_CREDENTIALS, error.message, 401);
+  }
+};
+
+export const adminLogin = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const result = await authService.adminLogin(req.body);
+    sendSuccess(res, API_CODES.AUTH_LOGIN_SUCCESS, "Admin login successful", result);
+  } catch (error: any) {
     sendError(res, API_CODES.AUTH_INVALID_CREDENTIALS, error.message, 401);
   }
 };

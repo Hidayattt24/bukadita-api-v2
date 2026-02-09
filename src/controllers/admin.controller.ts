@@ -178,6 +178,7 @@ export const updateUserRole = async (
   try {
     const { userId } = req.params;
     const { role } = req.body;
+    const callerRole = req.user?.role;
 
     if (!["pengguna", "admin", "superadmin"].includes(role)) {
       sendError(
@@ -185,6 +186,17 @@ export const updateUserRole = async (
         API_CODES.VALIDATION_ERROR,
         "Invalid role. Must be pengguna, admin, or superadmin",
         400
+      );
+      return;
+    }
+
+    // Role hierarchy check: Only superadmin can set role to admin or superadmin
+    if ((role === "admin" || role === "superadmin") && callerRole !== "superadmin") {
+      sendError(
+        res,
+        API_CODES.VALIDATION_ERROR,
+        "Only superadmin can assign admin or superadmin roles",
+        403
       );
       return;
     }
@@ -267,6 +279,7 @@ export const createUser = async (
     console.log("📦 [CREATE USER] Body:", req.body);
 
     const { email, password, full_name, phone, role, address, date_of_birth, profil_url } = req.body;
+    const callerRole = req.user?.role;
 
     // Validate required fields - email OR phone must be provided
     if ((!email && !phone) || !password || !full_name) {
@@ -288,6 +301,18 @@ export const createUser = async (
         API_CODES.VALIDATION_ERROR,
         "Invalid role. Must be pengguna or admin",
         400
+      );
+      return;
+    }
+
+    // Role hierarchy check: Only superadmin can create admin
+    if (role === "admin" && callerRole !== "superadmin") {
+      console.log("❌ [CREATE USER] Insufficient permissions to create admin");
+      sendError(
+        res,
+        API_CODES.VALIDATION_ERROR,
+        "Only superadmin can create admin users",
+        403
       );
       return;
     }

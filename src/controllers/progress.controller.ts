@@ -262,3 +262,57 @@ export const getSpecificUserProgress = async (
     sendError(res, "USER_PROGRESS_FETCH_ERROR", error.message, 500);
   }
 };
+
+// Mark poin as scroll completed
+export const markPoinScrollCompleted = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      sendError(res, API_CODES.UNAUTHORIZED, "Authentication required", 401);
+      return;
+    }
+
+    const result = await progressService.markPoinScrollCompleted(userId, id);
+
+    sendSuccess(
+      res,
+      API_CODES.PROGRESS_UPDATE_SUCCESS,
+      "Poin scroll completion marked successfully",
+      result
+    );
+  } catch (error: any) {
+    sendError(res, "PROGRESS_UPDATE_ERROR", error.message, 500);
+  }
+};
+
+// Get poin scroll status
+export const getPoinScrollStatus = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      sendError(res, API_CODES.UNAUTHORIZED, "Authentication required", 401);
+      return;
+    }
+
+    const result = await progressService.getPoinScrollStatus(userId, id);
+
+    sendSuccess(
+      res,
+      API_CODES.PROGRESS_FETCH_SUCCESS,
+      "Poin scroll status fetched successfully",
+      result
+    );
+  } catch (error: any) {
+    sendError(res, "PROGRESS_FETCH_ERROR", error.message, 500);
+  }
+};

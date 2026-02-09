@@ -364,6 +364,7 @@ export const getQuizAttemptsByModule = async (userId: string, moduleId: string) 
       quiz: {
         module_id: moduleId,
       },
+      completed_at: { not: null }, // ✅ FIX: Only get completed attempts
     },
     include: {
       quiz: {
@@ -376,7 +377,7 @@ export const getQuizAttemptsByModule = async (userId: string, moduleId: string) 
         },
       },
     },
-    orderBy: { completed_at: "desc" },
+    orderBy: { completed_at: "desc" }, // Latest first
   });
 
   return {

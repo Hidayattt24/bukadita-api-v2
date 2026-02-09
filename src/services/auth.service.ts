@@ -185,11 +185,24 @@ export const login = async (data: { identifier: string; password: string }) => {
     throw new Error("Profile not found");
   }
 
-  // 4. Get user from Supabase (for email_confirmed_at)
+  // 4. Check role - only "pengguna" can login to user app
+  // Admin and superadmin should use admin portal
+  if (profile.role !== "pengguna") {
+    logger.warn("Non-pengguna role attempted login:", {
+      userId: profile.id,
+      role: profile.role,
+    });
+    const error = new Error("ADMIN_LOGIN_REQUIRED");
+    (error as any).code = "ADMIN_LOGIN_REQUIRED";
+    (error as any).role = profile.role;
+    throw error;
+  }
+
+  // 5. Get user from Supabase (for email_confirmed_at)
   const { data: users } = await supabase.auth.admin.listUsers();
   const user = users?.users?.find((u) => u.id === credentialData.userId);
 
-  // 5. Generate tokens
+  // 6. Generate tokens
   const payload = {
     userId: profile.id,
     email: profile.email ?? "",
@@ -199,6 +212,78 @@ export const login = async (data: { identifier: string; password: string }) => {
   const refresh_token = generateRefreshToken(payload);
 
   logger.info("Login successful for user:", {
+    userId: profile.id,
+    role: profile.role,
+  });
+
+  return {
+    access_token,
+    refresh_token,
+    expires_at: getTokenExpiry(process.env.JWT_ACCESS_EXPIRY || "15m"),
+    user: {
+      id: profile.id,
+      email: profile.email,
+      email_confirmed_at: user?.email_confirmed_at || null,
+      profile,
+    },
+  };
+};
+
+// Admin login - allows admin and superadmin roles only
+export const adminLogin = async (data: { identifier: string; password: string }) => {
+  logger.info("Admin login attempt with identifier:", {
+    identifier: data.identifier,
+    type: getIdentifierType(data.identifier),
+  });
+
+  // 1. Try to get password hash from our custom table (supports email & phone)
+  const credentialData = await getPasswordHash(data.identifier);
+
+  if (!credentialData) {
+    logger.warn("No credentials found for identifier:", data.identifier);
+    throw new Error("Invalid credentials");
+  }
+
+  // 2. Verify password with bcrypt
+  const isValid = await bcrypt.compare(data.password, credentialData.hash);
+  if (!isValid) {
+    logger.warn("Invalid password for identifier:", data.identifier);
+    throw new Error("Invalid credentials");
+  }
+
+  // 3. Get profile from database
+  const profile = await prisma.profile.findUnique({
+    where: { id: credentialData.userId },
+  });
+
+  if (!profile) {
+    logger.error("Profile not found for user:", credentialData.userId);
+    throw new Error("Profile not found");
+  }
+
+  // 4. Check role - only "admin" and "superadmin" can login to admin portal
+  if (profile.role !== "admin" && profile.role !== "superadmin") {
+    logger.warn("Non-admin role attempted admin login:", {
+      userId: profile.id,
+      role: profile.role,
+    });
+    throw new Error("Invalid credentials");
+  }
+
+  // 5. Get user from Supabase (for email_confirmed_at)
+  const { data: users } = await supabase.auth.admin.listUsers();
+  const user = users?.users?.find((u) => u.id === credentialData.userId);
+
+  // 6. Generate tokens
+  const payload = {
+    userId: profile.id,
+    email: profile.email ?? "",
+    role: profile.role,
+  };
+  const access_token = generateAccessToken(payload);
+  const refresh_token = generateRefreshToken(payload);
+
+  logger.info("Admin login successful for user:", {
     userId: profile.id,
     role: profile.role,
   });

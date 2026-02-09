@@ -133,54 +133,73 @@ export const getModuleProgress = async (userId: string, moduleId: string) => {
       throw new Error("Module not found");
     }
 
-    // 🔥 NEW: Check quiz history and auto-unlock next sub-materi if quiz passed
+    // 🔥 IMPROVED: Check quiz history and auto-unlock next sub-materi ONLY if previous is completed
     for (let i = 0; i < module.subMateris.length - 1; i++) {
       const currentSub = module.subMateris[i];
       const nextSub = module.subMateris[i + 1];
       
-      // Check if current sub-materi has quiz
-      const quiz = await prisma.materisQuiz.findFirst({
+      // Get current sub-materi progress
+      const currentProgress = await prisma.userSubMateriProgress.findUnique({
         where: {
-          module_id: moduleId,
-          sub_materi_id: currentSub.id,
-          published: true,
+          user_id_sub_materi_id: {
+            user_id: userId,
+            sub_materi_id: currentSub.id,
+          },
         },
       });
       
-      if (quiz) {
-        // Check if user has passed this quiz
-        const passedAttempt = await prisma.quizAttempt.findFirst({
+      // ✅ Only unlock next if current is completed
+      if (currentProgress?.is_completed) {
+        // Ensure next sub-materi is unlocked
+        await prisma.userSubMateriProgress.upsert({
           where: {
+            user_id_sub_materi_id: {
+              user_id: userId,
+              sub_materi_id: nextSub.id,
+            },
+          },
+          update: {
+            is_unlocked: true,
+            updated_at: new Date(),
+          },
+          create: {
             user_id: userId,
-            quiz_id: quiz.id,
-            passed: true,
+            sub_materi_id: nextSub.id,
+            is_unlocked: true,
+            is_completed: false,
+            current_poin_index: 0,
+            progress_percent: 0,
           },
         });
         
-        if (passedAttempt) {
-          // User has passed quiz, ensure next sub-materi is unlocked
-          await prisma.userSubMateriProgress.upsert({
+        logger.info(`[getModuleProgress] Auto-unlocked next sub-materi ${nextSub.id} because previous sub-materi ${currentSub.id} is completed`);
+      } else {
+        // ✅ Ensure next sub-materi is LOCKED if previous is not completed
+        const nextProgress = await prisma.userSubMateriProgress.findUnique({
+          where: {
+            user_id_sub_materi_id: {
+              user_id: userId,
+              sub_materi_id: nextSub.id,
+            },
+          },
+        });
+        
+        // Only lock if it exists and is not completed (don't lock completed sub-materis)
+        if (nextProgress && !nextProgress.is_completed) {
+          await prisma.userSubMateriProgress.update({
             where: {
               user_id_sub_materi_id: {
                 user_id: userId,
                 sub_materi_id: nextSub.id,
               },
             },
-            update: {
-              is_unlocked: true,
+            data: {
+              is_unlocked: false,
               updated_at: new Date(),
-            },
-            create: {
-              user_id: userId,
-              sub_materi_id: nextSub.id,
-              is_unlocked: true,
-              is_completed: false,
-              current_poin_index: 0,
-              progress_percent: 0,
             },
           });
           
-          logger.info(`[getModuleProgress] Auto-unlocked next sub-materi ${nextSub.id} because quiz ${quiz.id} was passed`);
+          logger.info(`[getModuleProgress] Locked sub-materi ${nextSub.id} because previous sub-materi ${currentSub.id} is not completed`);
         }
       }
     }
@@ -840,3 +859,88 @@ export async function unlockNextSubMateri(
     });
   }
 }
+
+// Mark poin as scroll completed (user reached 100% scroll)
+export const markPoinScrollCompleted = async (userId: string, poinId: string) => {
+  try {
+    logger.info(`[markPoinScrollCompleted] User ${userId} completed scrolling poin ${poinId}`);
+
+    // Check if already marked as scroll completed
+    const existingProgress = await prisma.userPoinProgress.findUnique({
+      where: {
+        user_id_poin_id: {
+          user_id: userId,
+          poin_id: poinId,
+        },
+      },
+    }) as any; // Type assertion until Prisma regenerated
+
+    // Only update if not already scroll completed (first time reaching 100%)
+    if (existingProgress?.scroll_completed) {
+      logger.info(`[markPoinScrollCompleted] Poin ${poinId} already marked as scroll completed`);
+      return {
+        success: true,
+        already_completed: true,
+        scroll_completed_at: existingProgress.scroll_completed_at,
+      };
+    }
+
+    // Update or create progress with scroll completion
+    const progress = await prisma.userPoinProgress.upsert({
+      where: {
+        user_id_poin_id: {
+          user_id: userId,
+          poin_id: poinId,
+        },
+      },
+      update: {
+        scroll_completed: true,
+        scroll_completed_at: new Date(),
+      } as any, // Type assertion until Prisma regenerated
+      create: {
+        user_id: userId,
+        poin_id: poinId,
+        scroll_completed: true,
+        scroll_completed_at: new Date(),
+        is_completed: false, // Scroll completion doesn't mean poin is completed
+      } as any, // Type assertion until Prisma regenerated
+    }) as any;
+
+    logger.info(`[markPoinScrollCompleted] Successfully marked poin ${poinId} as scroll completed`);
+
+    return {
+      success: true,
+      already_completed: false,
+      scroll_completed_at: progress.scroll_completed_at,
+    };
+  } catch (error) {
+    logger.error("[markPoinScrollCompleted] Error:", error);
+    throw new Error("Failed to mark poin as scroll completed");
+  }
+};
+
+// Get poin scroll status
+export const getPoinScrollStatus = async (userId: string, poinId: string) => {
+  try {
+    const progress = await prisma.userPoinProgress.findUnique({
+      where: {
+        user_id_poin_id: {
+          user_id: userId,
+          poin_id: poinId,
+        },
+      },
+      select: {
+        scroll_completed: true,
+        scroll_completed_at: true,
+      } as any, // Type assertion until Prisma regenerated
+    }) as any;
+
+    return {
+      scroll_completed: progress?.scroll_completed || false,
+      scroll_completed_at: progress?.scroll_completed_at || null,
+    };
+  } catch (error) {
+    logger.error("[getPoinScrollStatus] Error:", error);
+    throw new Error("Failed to get poin scroll status");
+  }
+};
