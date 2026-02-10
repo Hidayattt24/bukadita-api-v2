@@ -6,7 +6,7 @@ import prisma from "../config/database";
  */
 export const getProgressMonitoringStats = async () => {
   try {
-    console.log('\n========== [getProgressMonitoringStats] START ==========');
+    console.log("\n========== [getProgressMonitoringStats] START ==========");
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
@@ -42,7 +42,7 @@ export const getProgressMonitoringStats = async () => {
 
       // Group scores by module
       const moduleScores = new Map<string, number[]>();
-      
+
       user.quizAttempts.forEach((attempt: any) => {
         if (attempt.quiz?.module_id) {
           const moduleId = attempt.quiz.module_id;
@@ -57,7 +57,8 @@ export const getProgressMonitoringStats = async () => {
       if (moduleScores.size === 0) return false;
 
       for (const scores of moduleScores.values()) {
-        const avgScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+        const avgScore =
+          scores.reduce((sum, score) => sum + score, 0) / scores.length;
         if (avgScore < 85) {
           return false; // If any module has avg < 85%, not active
         }
@@ -96,7 +97,7 @@ export const getProgressMonitoringStats = async () => {
 
       // Group attempts by module_id to count failures per module
       const moduleFailures = new Map<string, number>();
-      
+
       user.quizAttempts.forEach((attempt: any) => {
         if (!attempt.passed && attempt.quiz?.module_id) {
           const moduleId = attempt.quiz.module_id;
@@ -113,7 +114,9 @@ export const getProgressMonitoringStats = async () => {
 
       return false;
     }).length;
-    console.log(`[Stats] Struggling users (5+ failures/module): ${strugglingUsers}`);
+    console.log(
+      `[Stats] Struggling users (5+ failures/module): ${strugglingUsers}`,
+    );
 
     // Inactive users: users with 0 quiz attempts
     const inactiveUsersData = await prisma.profile.findMany({
@@ -141,8 +144,8 @@ export const getProgressMonitoringStats = async () => {
       struggling_users: strugglingUsers,
       inactive_users: inactiveUsers,
     };
-    console.log('[Stats] RESULT:', JSON.stringify(result));
-    console.log('========== [getProgressMonitoringStats] END ==========\n');
+    console.log("[Stats] RESULT:", JSON.stringify(result));
+    console.log("========== [getProgressMonitoringStats] END ==========\n");
 
     return result;
   } catch (error) {
@@ -157,7 +160,7 @@ export const getProgressMonitoringStats = async () => {
  */
 export const getModuleCompletionStats = async () => {
   try {
-    console.log('\n========== [getModuleCompletionStats] START ==========');
+    console.log("\n========== [getModuleCompletionStats] START ==========");
     const modules = await prisma.module.findMany({
       where: { published: true },
       select: {
@@ -177,7 +180,7 @@ export const getModuleCompletionStats = async () => {
     const moduleStats = await Promise.all(
       modules.map(async (module: any) => {
         const moduleQuizIds = module.quizzes.map((q: any) => q.id);
-        
+
         // Get all users who attempted quizzes in this module
         const usersWithAttempts = await prisma.profile.findMany({
           where: {
@@ -207,21 +210,27 @@ export const getModuleCompletionStats = async () => {
         });
 
         const totalStarted = usersWithAttempts.length;
-        
+
         // Count users who completed (answered all quizzes in module)
         let totalCompleted = 0;
         let totalStuck = 0; // Users with 5+ failures in this module
-        
+
         usersWithAttempts.forEach((user: any) => {
-          const answeredQuizIds = new Set(user.quizAttempts.map((a: any) => a.quiz_id));
-          const allQuizzesAnswered = moduleQuizIds.every((qid: string) => answeredQuizIds.has(qid));
-          
+          const answeredQuizIds = new Set(
+            user.quizAttempts.map((a: any) => a.quiz_id),
+          );
+          const allQuizzesAnswered = moduleQuizIds.every((qid: string) =>
+            answeredQuizIds.has(qid),
+          );
+
           if (allQuizzesAnswered) {
             totalCompleted++;
           }
-          
+
           // Count failures in this module (CHANGED: 5+ failures instead of 3+)
-          const failures = user.quizAttempts.filter((a: any) => !a.passed).length;
+          const failures = user.quizAttempts.filter(
+            (a: any) => !a.passed,
+          ).length;
           if (failures >= 5) {
             totalStuck++;
           }
@@ -241,14 +250,16 @@ export const getModuleCompletionStats = async () => {
           completion_rate: completionRate,
         };
 
-        console.log(`[ModuleStats] ${module.title}: completed=${totalCompleted}, stuck=${totalStuck} (5+ failures), started=${totalStarted}, rate=${completionRate}%`);
+        console.log(
+          `[ModuleStats] ${module.title}: completed=${totalCompleted}, stuck=${totalStuck} (5+ failures), started=${totalStarted}, rate=${completionRate}%`,
+        );
 
         return stats;
-      })
+      }),
     );
 
-    console.log('[ModuleStats] RESULT: Total stats count:', moduleStats.length);
-    console.log('========== [getModuleCompletionStats] END ==========\n');
+    console.log("[ModuleStats] RESULT: Total stats count:", moduleStats.length);
+    console.log("========== [getModuleCompletionStats] END ==========\n");
 
     return moduleStats;
   } catch (error) {
@@ -263,8 +274,10 @@ export const getModuleCompletionStats = async () => {
  */
 export const getStuckUsersByModule = async (moduleId: string) => {
   try {
-    console.log(`\n========== [getStuckUsersByModule] START for module: ${moduleId} ==========`);
-    
+    console.log(
+      `\n========== [getStuckUsersByModule] START for module: ${moduleId} ==========`,
+    );
+
     // Get module with its quizzes
     const module = await prisma.module.findUnique({
       where: { id: moduleId },
@@ -284,7 +297,9 @@ export const getStuckUsersByModule = async (moduleId: string) => {
     }
 
     const moduleQuizIds = module.quizzes.map((q: any) => q.id);
-    console.log(`[StuckUsers] Module: ${module.title}, Quiz IDs: ${moduleQuizIds.join(', ')}`);
+    console.log(
+      `[StuckUsers] Module: ${module.title}, Quiz IDs: ${moduleQuizIds.join(", ")}`,
+    );
 
     // Get all users who attempted quizzes in this module
     const usersWithAttempts = await prisma.profile.findMany({
@@ -319,17 +334,22 @@ export const getStuckUsersByModule = async (moduleId: string) => {
       },
     });
 
-    console.log(`[StuckUsers] Total users with attempts: ${usersWithAttempts.length}`);
+    console.log(
+      `[StuckUsers] Total users with attempts: ${usersWithAttempts.length}`,
+    );
 
     // Filter users with 5+ failures and build result
     const stuckUsers = usersWithAttempts
       .map((user: any) => {
         const failures = user.quizAttempts.filter((a: any) => !a.passed).length;
-        const lastAttempt = user.quizAttempts.length > 0 
-          ? user.quizAttempts[0].completed_at 
-          : new Date();
+        const lastAttempt =
+          user.quizAttempts.length > 0
+            ? user.quizAttempts[0].completed_at
+            : new Date();
 
-        console.log(`[StuckUsers] User: ${user.full_name}, Failures: ${failures}`);
+        console.log(
+          `[StuckUsers] User: ${user.full_name}, Failures: ${failures}`,
+        );
 
         return {
           user_id: user.id,
@@ -344,9 +364,14 @@ export const getStuckUsersByModule = async (moduleId: string) => {
 
     console.log(`[StuckUsers] Stuck users (5+ failures): ${stuckUsers.length}`);
     if (stuckUsers.length > 0) {
-      console.log(`[StuckUsers] Sample:`, stuckUsers.slice(0, 3).map((u: any) => `${u.user_name} (${u.failure_count} failures)`));
+      console.log(
+        `[StuckUsers] Sample:`,
+        stuckUsers
+          .slice(0, 3)
+          .map((u: any) => `${u.user_name} (${u.failure_count} failures)`),
+      );
     }
-    console.log('========== [getStuckUsersByModule] END ==========\n');
+    console.log("========== [getStuckUsersByModule] END ==========\n");
 
     return stuckUsers;
   } catch (error) {
@@ -365,9 +390,9 @@ export const getUserProgressList = async (params: {
   limit?: number;
 }) => {
   try {
-    console.log('\n========== [getUserProgressList] START ==========');
-    console.log('[UserList] Params:', JSON.stringify(params));
-    
+    console.log("\n========== [getUserProgressList] START ==========");
+    console.log("[UserList] Params:", JSON.stringify(params));
+
     const { search = "", status = "all", page = 1, limit = 10 } = params;
     const skip = (page - 1) * limit;
 
@@ -429,17 +454,24 @@ export const getUserProgressList = async (params: {
       },
     });
 
-    console.log(`[getUserProgressList] Total users: ${allUsers.length}, Total modules: ${allModules.length}`);
-    console.log(`[getUserProgressList] Modules:`, allModules.map((m: any) => `${m.title} (${m.quizzes.length} quizzes)`).join(', '));
+    console.log(
+      `[getUserProgressList] Total users: ${allUsers.length}, Total modules: ${allModules.length}`,
+    );
+    console.log(
+      `[getUserProgressList] Modules:`,
+      allModules
+        .map((m: any) => `${m.title} (${m.quizzes.length} quizzes)`)
+        .join(", "),
+    );
 
     // Calculate status for each user and filter
     const usersWithStatus = allUsers.map((user: any) => {
       const totalModules = allModules.length;
-      
+
       // Calculate module completion based on quiz attempts
       let completedModules = 0;
       let inProgressModules = 0;
-      
+
       // Build module quiz summary for display
       const moduleQuizSummary: Array<{
         module_id: string;
@@ -447,31 +479,35 @@ export const getUserProgressList = async (params: {
         quizzes_passed: number;
         total_quizzes: number;
       }> = [];
-      
+
       // Log for first few users
       const shouldLog = allUsers.indexOf(user) < 3;
       if (shouldLog) {
-        console.log(`[UserList] Calculating module progress for: ${user.full_name}`);
+        console.log(
+          `[UserList] Calculating module progress for: ${user.full_name}`,
+        );
       }
-      
+
       allModules.forEach((module: any) => {
         const moduleQuizIds = new Set(module.quizzes.map((q: any) => q.id));
-        const userAttemptsForModule = user.quizAttempts.filter((attempt: any) => 
-          moduleQuizIds.has(attempt.quiz_id)
+        const userAttemptsForModule = user.quizAttempts.filter((attempt: any) =>
+          moduleQuizIds.has(attempt.quiz_id),
         );
-        
-        const answeredQuizIds = new Set(userAttemptsForModule.map((a: any) => a.quiz_id));
+
+        const answeredQuizIds = new Set(
+          userAttemptsForModule.map((a: any) => a.quiz_id),
+        );
         const quizzesAnswered = answeredQuizIds.size;
         const totalQuizzes = module.quizzes.length;
-        
+
         // Count passed quizzes
         const passedQuizIds = new Set(
           userAttemptsForModule
             .filter((a: any) => a.passed)
-            .map((a: any) => a.quiz_id)
+            .map((a: any) => a.quiz_id),
         );
         const quizzesPassed = passedQuizIds.size;
-        
+
         // Add to summary
         moduleQuizSummary.push({
           module_id: module.id,
@@ -479,11 +515,13 @@ export const getUserProgressList = async (params: {
           quizzes_passed: quizzesPassed,
           total_quizzes: totalQuizzes,
         });
-        
+
         if (shouldLog) {
-          console.log(`  - Module: ${module.title}, Answered: ${quizzesAnswered}/${totalQuizzes}, Passed: ${quizzesPassed}`);
+          console.log(
+            `  - Module: ${module.title}, Answered: ${quizzesAnswered}/${totalQuizzes}, Passed: ${quizzesPassed}`,
+          );
         }
-        
+
         if (quizzesAnswered === totalQuizzes && totalQuizzes > 0) {
           completedModules++;
           if (shouldLog) console.log(`    -> Status: COMPLETED`);
@@ -494,21 +532,24 @@ export const getUserProgressList = async (params: {
           if (shouldLog) console.log(`    -> Status: NOT-STARTED`);
         }
       });
-      
-      const notStartedModules = totalModules - completedModules - inProgressModules;
+
+      const notStartedModules =
+        totalModules - completedModules - inProgressModules;
 
       // Count UNIQUE quizzes (not total attempts)
-      const uniqueQuizIds = new Set(user.quizAttempts.map((a: any) => a.quiz_id));
+      const uniqueQuizIds = new Set(
+        user.quizAttempts.map((a: any) => a.quiz_id),
+      );
       const totalUniqueQuizzes = uniqueQuizIds.size;
-      
+
       // Count unique quizzes that have at least one passed attempt
       const passedQuizIds = new Set(
         user.quizAttempts
           .filter((a: any) => a.passed)
-          .map((a: any) => a.quiz_id)
+          .map((a: any) => a.quiz_id),
       );
       const totalQuizPassed = passedQuizIds.size;
-      
+
       // Failed quizzes = answered but never passed
       const totalQuizFailed = totalUniqueQuizzes - totalQuizPassed;
 
@@ -519,23 +560,30 @@ export const getUserProgressList = async (params: {
       if (allUsers.indexOf(user) < 3) {
         console.log(`[UserList] User: ${user.full_name}`);
         console.log(`  - Total attempts: ${totalQuizAttempts}`);
-        console.log(`  - Unique quizzes: ${totalUniqueQuizzes} (IDs: ${Array.from(uniqueQuizIds).join(', ')})`);
-        console.log(`  - Passed quizzes: ${totalQuizPassed} (IDs: ${Array.from(passedQuizIds).join(', ')})`);
+        console.log(
+          `  - Unique quizzes: ${totalUniqueQuizzes} (IDs: ${Array.from(uniqueQuizIds).join(", ")})`,
+        );
+        console.log(
+          `  - Passed quizzes: ${totalQuizPassed} (IDs: ${Array.from(passedQuizIds).join(", ")})`,
+        );
         console.log(`  - Failed quizzes: ${totalQuizFailed}`);
       }
 
       const averageQuizScore =
         totalQuizAttempts > 0
           ? Math.round(
-              user.quizAttempts.reduce((sum: number, a: any) => sum + Number(a.score), 0) /
-                totalQuizAttempts
+              user.quizAttempts.reduce(
+                (sum: number, a: any) => sum + Number(a.score),
+                0,
+              ) / totalQuizAttempts,
             )
           : 0;
 
       // Determine last activity
-      const lastActivity = user.quizAttempts.length > 0
-        ? user.quizAttempts[0].created_at
-        : new Date(0);
+      const lastActivity =
+        user.quizAttempts.length > 0
+          ? user.quizAttempts[0].created_at
+          : new Date(0);
 
       // Determine user status
       let userStatus: "active" | "struggling" | "inactive" = "inactive"; // Default to inactive
@@ -547,7 +595,7 @@ export const getUserProgressList = async (params: {
       } else {
         // Check for active: all modules have average score >= 85%
         const moduleScores = new Map<string, number[]>();
-        
+
         user.quizAttempts.forEach((attempt: any) => {
           if (attempt.quiz?.module_id) {
             const moduleId = attempt.quiz.module_id;
@@ -562,7 +610,9 @@ export const getUserProgressList = async (params: {
         if (moduleScores.size > 0) {
           isActive = true;
           for (const scores of moduleScores.values()) {
-            const avgScore = scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length;
+            const avgScore =
+              scores.reduce((sum: number, score: number) => sum + score, 0) /
+              scores.length;
             if (avgScore < 85) {
               isActive = false;
               break;
@@ -572,11 +622,14 @@ export const getUserProgressList = async (params: {
 
         // Check for struggling: 5+ failures in any single module
         const moduleFailures = new Map<string, number>();
-        
+
         user.quizAttempts.forEach((attempt: any) => {
           if (!attempt.passed && attempt.quiz?.module_id) {
             const moduleId = attempt.quiz.module_id;
-            moduleFailures.set(moduleId, (moduleFailures.get(moduleId) || 0) + 1);
+            moduleFailures.set(
+              moduleId,
+              (moduleFailures.get(moduleId) || 0) + 1,
+            );
           }
         });
 
@@ -613,9 +666,10 @@ export const getUserProgressList = async (params: {
         total_quiz_passed: totalQuizPassed,
         total_quiz_failed: totalQuizFailed,
         unique_quizzes_attempted: totalUniqueQuizzes, // NEW: Total unique quizzes attempted
-        pass_rate: totalUniqueQuizzes > 0 
-          ? Math.round((totalQuizPassed / totalUniqueQuizzes) * 100) 
-          : 0, // NEW: Pass rate percentage
+        pass_rate:
+          totalUniqueQuizzes > 0
+            ? Math.round((totalQuizPassed / totalUniqueQuizzes) * 100)
+            : 0, // NEW: Pass rate percentage
         average_quiz_score: averageQuizScore,
         module_quiz_summary: moduleQuizSummary, // NEW: Quiz summary per module
         last_activity: lastActivity.toISOString(),
@@ -623,12 +677,14 @@ export const getUserProgressList = async (params: {
       };
     });
 
-    console.log(`[getUserProgressList] Processed ${usersWithStatus.length} users`);
-    
+    console.log(
+      `[getUserProgressList] Processed ${usersWithStatus.length} users`,
+    );
+
     // Log first user for debugging
     if (usersWithStatus.length > 0) {
       const firstUser = usersWithStatus[0];
-      console.log('[UserList] First user sample:', {
+      console.log("[UserList] First user sample:", {
         name: firstUser.user_name,
         total_modules: firstUser.total_modules,
         completed: firstUser.completed_modules,
@@ -649,12 +705,17 @@ export const getUserProgressList = async (params: {
         ? usersWithStatus
         : usersWithStatus.filter((u: any) => u.status === status);
 
-    console.log(`[UserList] After filter (status=${status}): ${filteredUsers.length} users`);
+    console.log(
+      `[UserList] After filter (status=${status}): ${filteredUsers.length} users`,
+    );
 
     // Sort: struggling first, then active, then inactive
     filteredUsers.sort((a: any, b: any) => {
       const order = { struggling: 0, active: 1, inactive: 2 };
-      return order[a.status as keyof typeof order] - order[b.status as keyof typeof order];
+      return (
+        order[a.status as keyof typeof order] -
+        order[b.status as keyof typeof order]
+      );
     });
 
     // Paginate
@@ -670,11 +731,11 @@ export const getUserProgressList = async (params: {
       },
     };
 
-    console.log('[UserList] RESULT:', {
+    console.log("[UserList] RESULT:", {
       items_count: result.items.length,
       pagination: result.pagination,
     });
-    console.log('========== [getUserProgressList] END ==========\n');
+    console.log("========== [getUserProgressList] END ==========\n");
 
     return result;
   } catch (error) {
@@ -690,7 +751,7 @@ export const getUserProgressList = async (params: {
 export const getUserDetailProgress = async (userId: string) => {
   try {
     console.log(`[getUserDetailProgress] Fetching data for user: ${userId}`);
-    
+
     // Get user data
     const user = await prisma.profile.findUnique({
       where: { id: userId },
@@ -739,7 +800,9 @@ export const getUserDetailProgress = async (userId: string) => {
       throw new Error("User not found");
     }
 
-    console.log(`[getUserDetailProgress] User found: ${user.full_name}, Quiz attempts: ${user.quizAttempts.length}`);
+    console.log(
+      `[getUserDetailProgress] User found: ${user.full_name}, Quiz attempts: ${user.quizAttempts.length}`,
+    );
 
     // Get ALL modules with their quizzes and sub-materis
     const allModules = await prisma.module.findMany({
@@ -753,6 +816,12 @@ export const getUserDetailProgress = async (userId: string) => {
             title: true,
             quiz_type: true,
             sub_materi_id: true,
+            subMateri: {
+              select: {
+                id: true,
+                title: true,
+              },
+            },
           },
           orderBy: {
             created_at: "asc",
@@ -779,35 +848,44 @@ export const getUserDetailProgress = async (userId: string) => {
     const modulesProgress = allModules.map((module: any) => {
       const moduleQuizzes = module.quizzes;
       const totalQuizzes = moduleQuizzes.length;
-      
-      console.log(`[getUserDetailProgress] Module: ${module.title}, Total quizzes: ${totalQuizzes}`);
+
+      console.log(
+        `[getUserDetailProgress] Module: ${module.title}, Total quizzes: ${totalQuizzes}`,
+      );
 
       // Get user's attempts for this module's quizzes
       const moduleQuizIds = new Set(moduleQuizzes.map((q: any) => q.id));
-      const userAttemptsForModule = user.quizAttempts.filter((attempt: any) => 
-        moduleQuizIds.has(attempt.quiz_id)
+      const userAttemptsForModule = user.quizAttempts.filter((attempt: any) =>
+        moduleQuizIds.has(attempt.quiz_id),
       );
 
-      console.log(`[getUserDetailProgress] Module: ${module.title}, User attempts: ${userAttemptsForModule.length}`);
+      console.log(
+        `[getUserDetailProgress] Module: ${module.title}, User attempts: ${userAttemptsForModule.length}`,
+      );
 
       // Group attempts by quiz_id to get unique quizzes answered
-      const answeredQuizIds = new Set(userAttemptsForModule.map((a: any) => a.quiz_id));
+      const answeredQuizIds = new Set(
+        userAttemptsForModule.map((a: any) => a.quiz_id),
+      );
       const quizzesAnswered = answeredQuizIds.size;
-      
+
       // Count passed quizzes (at least one passed attempt per quiz)
       const passedQuizIds = new Set(
         userAttemptsForModule
           .filter((a: any) => a.passed)
-          .map((a: any) => a.quiz_id)
+          .map((a: any) => a.quiz_id),
       );
       const quizzesPassed = passedQuizIds.size;
 
       // Calculate progress: percentage of quizzes answered (not necessarily passed)
-      const overallProgress = totalQuizzes > 0 
-        ? Math.round((quizzesAnswered / totalQuizzes) * 100)
-        : 0;
+      const overallProgress =
+        totalQuizzes > 0
+          ? Math.round((quizzesAnswered / totalQuizzes) * 100)
+          : 0;
 
-      console.log(`[getUserDetailProgress] Module: ${module.title}, Progress: ${overallProgress}% (${quizzesAnswered}/${totalQuizzes} answered, ${quizzesPassed} passed)`);
+      console.log(
+        `[getUserDetailProgress] Module: ${module.title}, Progress: ${overallProgress}% (${quizzesAnswered}/${totalQuizzes} answered, ${quizzesPassed} passed)`,
+      );
 
       // Determine status
       let status: "not-started" | "in-progress" | "completed" = "not-started";
@@ -818,79 +896,106 @@ export const getUserDetailProgress = async (userId: string) => {
       }
 
       // Build quiz attempts array with ALL quizzes (even unattempted ones)
-      const quizAttemptsData = moduleQuizzes.map((quiz: any) => {
-        // Get all attempts for this specific quiz
-        const attemptsForQuiz = userAttemptsForModule.filter((a: any) => a.quiz_id === quiz.id);
-        
-        if (attemptsForQuiz.length === 0) {
-          // Quiz not attempted yet - return placeholder
-          return {
-            quiz_id: quiz.id,
-            quiz_title: quiz.title || "Untitled Quiz",
-            score: 0,
-            passed: false,
-            attempted_at: null,
-            total_questions: 0,
-            correct_answers: 0,
-            answers: [],
-            is_attempted: false,
-          };
-        }
+      const quizAttemptsData = moduleQuizzes
+        .map((quiz: any) => {
+          // Get all attempts for this specific quiz
+          const attemptsForQuiz = userAttemptsForModule.filter(
+            (a: any) => a.quiz_id === quiz.id,
+          );
 
-        // Return all attempts for this quiz (most recent first)
-        return attemptsForQuiz.map((attempt: any) => {
-          const answersArray = Array.isArray(attempt.answers) ? attempt.answers : [];
+          if (attemptsForQuiz.length === 0) {
+            // Quiz not attempted yet - return placeholder
+            return {
+              quiz_id: quiz.id,
+              quiz_title: quiz.title || "Untitled Quiz",
+              sub_materi_title:
+                quiz.subMateri?.title || quiz.title || "Untitled Quiz",
+              score: 0,
+              passed: false,
+              attempted_at: null,
+              total_questions: 0,
+              correct_answers: 0,
+              answers: [],
+              is_attempted: false,
+            };
+          }
 
-          const answersDetail = answersArray.map((ans: any, idx: number) => {
-            const question = attempt.quiz.questions[idx];
-            if (!question) {
+          // Return all attempts for this quiz (most recent first)
+          return attemptsForQuiz.map((attempt: any) => {
+            const answersArray = Array.isArray(attempt.answers)
+              ? attempt.answers
+              : [];
+
+            const answersDetail = answersArray.map((ans: any, idx: number) => {
+              const question = attempt.quiz.questions[idx];
+              if (!question) {
+                return {
+                  question_id: `q_${idx}`,
+                  question_text: "Pertanyaan tidak ditemukan",
+                  user_answer: "Tidak tersedia",
+                  correct_answer: "Tidak tersedia",
+                  is_correct: false,
+                };
+              }
+
+              const options = Array.isArray(question.options)
+                ? question.options
+                : [];
+              const userAnswerIndex =
+                ans.selected_option_index ??
+                ans.answer_index ??
+                ans.answerIndex ??
+                ans.selected_index ??
+                ans.selectedIndex ??
+                -1;
+              const correctAnswerIndex =
+                question.correct_answer_index ??
+                question.correctAnswerIndex ??
+                -1;
+
+              let userAnswerText = "Tidak dijawab";
+              if (userAnswerIndex >= 0 && userAnswerIndex < options.length) {
+                userAnswerText = options[userAnswerIndex];
+              } else if (ans.answer && typeof ans.answer === "string") {
+                userAnswerText = ans.answer;
+              }
+
+              let correctAnswerText = "Tidak tersedia";
+              if (
+                correctAnswerIndex >= 0 &&
+                correctAnswerIndex < options.length
+              ) {
+                correctAnswerText = options[correctAnswerIndex];
+              }
+
               return {
-                question_id: `q_${idx}`,
-                question_text: "Pertanyaan tidak ditemukan",
-                user_answer: "Tidak tersedia",
-                correct_answer: "Tidak tersedia",
-                is_correct: false,
+                question_id: question.id,
+                question_text: question.question_text,
+                user_answer: userAnswerText,
+                correct_answer: correctAnswerText,
+                is_correct:
+                  userAnswerIndex === correctAnswerIndex &&
+                  userAnswerIndex >= 0,
               };
-            }
-
-            const options = Array.isArray(question.options) ? question.options : [];
-            const userAnswerIndex = ans.selected_option_index ?? ans.answer_index ?? ans.answerIndex ?? ans.selected_index ?? ans.selectedIndex ?? -1;
-            const correctAnswerIndex = question.correct_answer_index ?? question.correctAnswerIndex ?? -1;
-
-            let userAnswerText = "Tidak dijawab";
-            if (userAnswerIndex >= 0 && userAnswerIndex < options.length) {
-              userAnswerText = options[userAnswerIndex];
-            } else if (ans.answer && typeof ans.answer === 'string') {
-              userAnswerText = ans.answer;
-            }
-
-            let correctAnswerText = "Tidak tersedia";
-            if (correctAnswerIndex >= 0 && correctAnswerIndex < options.length) {
-              correctAnswerText = options[correctAnswerIndex];
-            }
+            });
 
             return {
-              question_id: question.id,
-              question_text: question.question_text,
-              user_answer: userAnswerText,
-              correct_answer: correctAnswerText,
-              is_correct: userAnswerIndex === correctAnswerIndex && userAnswerIndex >= 0,
+              quiz_id: attempt.quiz.id,
+              quiz_title: attempt.quiz.title || "Untitled Quiz",
+              sub_materi_title:
+                quiz.subMateri?.title || attempt.quiz.title || "Untitled Quiz",
+              score: Number(attempt.score),
+              passed: attempt.passed,
+              attempted_at:
+                attempt.completed_at?.toISOString() || new Date().toISOString(),
+              total_questions: attempt.total_questions,
+              correct_answers: attempt.correct_answers,
+              answers: answersDetail,
+              is_attempted: true,
             };
           });
-
-          return {
-            quiz_id: attempt.quiz.id,
-            quiz_title: attempt.quiz.title || "Untitled Quiz",
-            score: Number(attempt.score),
-            passed: attempt.passed,
-            attempted_at: attempt.completed_at?.toISOString() || new Date().toISOString(),
-            total_questions: attempt.total_questions,
-            correct_answers: attempt.correct_answers,
-            answers: answersDetail,
-            is_attempted: true,
-          };
-        });
-      }).flat(); // Flatten to handle multiple attempts per quiz
+        })
+        .flat(); // Flatten to handle multiple attempts per quiz
 
       return {
         module_id: module.id,
@@ -901,9 +1006,11 @@ export const getUserDetailProgress = async (userId: string) => {
         quizzes_passed: quizzesPassed,
         total_quizzes: totalQuizzes,
         quiz_attempts: quizAttemptsData,
-        last_accessed: userAttemptsForModule.length > 0 
-          ? userAttemptsForModule[0].completed_at?.toISOString() || new Date().toISOString()
-          : "",
+        last_accessed:
+          userAttemptsForModule.length > 0
+            ? userAttemptsForModule[0].completed_at?.toISOString() ||
+              new Date().toISOString()
+            : "",
         overall_progress: overallProgress,
         total_time_spent: 0,
       };
@@ -911,44 +1018,56 @@ export const getUserDetailProgress = async (userId: string) => {
 
     // Calculate overall stats
     const totalModules = modulesProgress.length;
-    const completedModules = modulesProgress.filter((m: any) => m.status === "completed").length;
-    const inProgressModules = modulesProgress.filter((m: any) => m.status === "in-progress").length;
-    const notStartedModules = totalModules - completedModules - inProgressModules;
+    const completedModules = modulesProgress.filter(
+      (m: any) => m.status === "completed",
+    ).length;
+    const inProgressModules = modulesProgress.filter(
+      (m: any) => m.status === "in-progress",
+    ).length;
+    const notStartedModules =
+      totalModules - completedModules - inProgressModules;
 
-    const totalMaterialsRead = modulesProgress.reduce((sum: number, m: any) => sum + m.materials_read, 0);
-    
+    const totalMaterialsRead = modulesProgress.reduce(
+      (sum: number, m: any) => sum + m.materials_read,
+      0,
+    );
+
     // Count UNIQUE quizzes (not total attempts)
     const uniqueQuizIds = new Set(user.quizAttempts.map((a: any) => a.quiz_id));
     const totalUniqueQuizzes = uniqueQuizIds.size;
-    
+
     // Count unique quizzes that have at least one passed attempt
     const passedQuizIds = new Set(
-      user.quizAttempts
-        .filter((a: any) => a.passed)
-        .map((a: any) => a.quiz_id)
+      user.quizAttempts.filter((a: any) => a.passed).map((a: any) => a.quiz_id),
     );
     const totalQuizPassed = passedQuizIds.size;
-    
+
     // Failed quizzes = answered but never passed
     const totalQuizFailed = totalUniqueQuizzes - totalQuizPassed;
-    
+
     // Total attempts (for reference)
     const totalQuizAttempts = user.quizAttempts.length;
 
-    console.log(`[getUserDetailProgress] Quiz stats: Attempts=${totalQuizAttempts}, Unique=${totalUniqueQuizzes}, Passed=${totalQuizPassed}, Failed=${totalQuizFailed}`);
+    console.log(
+      `[getUserDetailProgress] Quiz stats: Attempts=${totalQuizAttempts}, Unique=${totalUniqueQuizzes}, Passed=${totalQuizPassed}, Failed=${totalQuizFailed}`,
+    );
 
     const averageQuizScore =
       totalQuizAttempts > 0
         ? Math.round(
-            user.quizAttempts.reduce((sum: number, a: any) => sum + Number(a.score), 0) /
-              totalQuizAttempts
+            user.quizAttempts.reduce(
+              (sum: number, a: any) => sum + Number(a.score),
+              0,
+            ) / totalQuizAttempts,
           )
         : 0;
 
     // Determine last activity
-    const lastActivity = user.quizAttempts.length > 0
-      ? user.quizAttempts[0].completed_at?.toISOString() || new Date().toISOString()
-      : new Date().toISOString();
+    const lastActivity =
+      user.quizAttempts.length > 0
+        ? user.quizAttempts[0].completed_at?.toISOString() ||
+          new Date().toISOString()
+        : new Date().toISOString();
 
     // Determine status
     let status: "active" | "struggling" | "inactive" = "inactive"; // Default to inactive
@@ -960,7 +1079,7 @@ export const getUserDetailProgress = async (userId: string) => {
     } else {
       // Check for active: all modules have average score >= 85%
       const moduleScores = new Map<string, number[]>();
-      
+
       user.quizAttempts.forEach((attempt: any) => {
         if (attempt.quiz?.module_id) {
           const moduleId = attempt.quiz.module_id;
@@ -975,7 +1094,9 @@ export const getUserDetailProgress = async (userId: string) => {
       if (moduleScores.size > 0) {
         isActive = true;
         for (const scores of moduleScores.values()) {
-          const avgScore = scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length;
+          const avgScore =
+            scores.reduce((sum: number, score: number) => sum + score, 0) /
+            scores.length;
           if (avgScore < 85) {
             isActive = false;
             break;
@@ -985,7 +1106,7 @@ export const getUserDetailProgress = async (userId: string) => {
 
       // Check for struggling: 5+ failures in any single module
       const moduleFailures = new Map<string, number>();
-      
+
       user.quizAttempts.forEach((attempt: any) => {
         if (!attempt.passed && attempt.quiz?.module_id) {
           const moduleId = attempt.quiz.module_id;
@@ -1026,9 +1147,10 @@ export const getUserDetailProgress = async (userId: string) => {
       total_quiz_passed: totalQuizPassed,
       total_quiz_failed: totalQuizFailed,
       unique_quizzes_attempted: totalUniqueQuizzes, // NEW: Total unique quizzes attempted
-      pass_rate: totalUniqueQuizzes > 0 
-        ? Math.round((totalQuizPassed / totalUniqueQuizzes) * 100) 
-        : 0, // NEW: Pass rate percentage
+      pass_rate:
+        totalUniqueQuizzes > 0
+          ? Math.round((totalQuizPassed / totalUniqueQuizzes) * 100)
+          : 0, // NEW: Pass rate percentage
       average_quiz_score: averageQuizScore,
       last_activity: lastActivity,
       status,
@@ -1062,8 +1184,8 @@ export const getUserDetailProgress = async (userId: string) => {
  */
 export const getReadingProgressStats = async () => {
   try {
-    console.log('\n========== [getReadingProgressStats] START ==========');
-    
+    console.log("\n========== [getReadingProgressStats] START ==========");
+
     // Get all users with their poin progress
     const usersWithProgress = await prisma.profile.findMany({
       where: {
@@ -1080,10 +1202,7 @@ export const getReadingProgressStats = async () => {
         email: true,
         poinProgress: {
           where: {
-            OR: [
-              { is_completed: true },
-              { scroll_completed: true },
-            ],
+            OR: [{ is_completed: true }, { scroll_completed: true }],
           },
           select: {
             poin_id: true,
@@ -1114,7 +1233,9 @@ export const getReadingProgressStats = async () => {
       },
     });
 
-    console.log(`[ReadingProgress] Found ${usersWithProgress.length} users with reading progress`);
+    console.log(
+      `[ReadingProgress] Found ${usersWithProgress.length} users with reading progress`,
+    );
 
     // Get all modules with their sub-materis and poins
     const allModules = await prisma.module.findMany({
@@ -1169,16 +1290,22 @@ export const getReadingProgressStats = async () => {
     // Process each user
     for (const user of usersWithProgress) {
       // Group user's poin progress by module
-      const moduleProgressMap = new Map<string, {
-        module_id: string;
-        module_title: string;
-        sub_materis: Map<string, {
-          sub_materi_id: string;
-          sub_materi_title: string;
-          read_poins: Set<string>;
-          scroll_completed_poins: Set<string>;
-        }>;
-      }>();
+      const moduleProgressMap = new Map<
+        string,
+        {
+          module_id: string;
+          module_title: string;
+          sub_materis: Map<
+            string,
+            {
+              sub_materi_id: string;
+              sub_materi_title: string;
+              read_poins: Set<string>;
+              scroll_completed_poins: Set<string>;
+            }
+          >;
+        }
+      >();
 
       // Build progress map from user's poin progress
       for (const progress of user.poinProgress) {
@@ -1199,7 +1326,7 @@ export const getReadingProgressStats = async () => {
         }
 
         const moduleProgress = moduleProgressMap.get(moduleId)!;
-        
+
         if (!moduleProgress.sub_materis.has(subMateriId)) {
           moduleProgress.sub_materis.set(subMateriId, {
             sub_materi_id: subMateriId,
@@ -1210,7 +1337,7 @@ export const getReadingProgressStats = async () => {
         }
 
         const subMateriProgress = moduleProgress.sub_materis.get(subMateriId)!;
-        
+
         if (progress.is_completed) {
           subMateriProgress.read_poins.add(progress.poin_id);
         }
@@ -1222,11 +1349,11 @@ export const getReadingProgressStats = async () => {
       // Calculate statistics for each module
       for (const module of allModules) {
         const moduleProgress = moduleProgressMap.get(module.id);
-        
+
         // Calculate total poins in this module
         const totalPoins = module.subMateris.reduce(
           (sum, sm) => sum + sm.poinDetails.length,
-          0
+          0,
         );
 
         if (totalPoins === 0) continue; // Skip modules with no poins
@@ -1234,13 +1361,17 @@ export const getReadingProgressStats = async () => {
         // Build sub-materi statistics
         const subMateriStats = module.subMateris.map((subMateri) => {
           const totalSubMateriPoins = subMateri.poinDetails.length;
-          const subMateriProgress = moduleProgress?.sub_materis.get(subMateri.id);
-          
+          const subMateriProgress = moduleProgress?.sub_materis.get(
+            subMateri.id,
+          );
+
           const readPoins = subMateriProgress?.read_poins.size || 0;
-          const scrollCompletedPoins = subMateriProgress?.scroll_completed_poins.size || 0;
-          const readPercentage = totalSubMateriPoins > 0
-            ? Math.round((scrollCompletedPoins / totalSubMateriPoins) * 100)
-            : 0;
+          const scrollCompletedPoins =
+            subMateriProgress?.scroll_completed_poins.size || 0;
+          const readPercentage =
+            totalSubMateriPoins > 0
+              ? Math.round((scrollCompletedPoins / totalSubMateriPoins) * 100)
+              : 0;
 
           return {
             sub_materi_id: subMateri.id,
@@ -1253,14 +1384,18 @@ export const getReadingProgressStats = async () => {
         });
 
         // Calculate module-level statistics
-        const totalReadPoins = subMateriStats.reduce((sum, sm) => sum + sm.read_poins, 0);
+        const totalReadPoins = subMateriStats.reduce(
+          (sum, sm) => sum + sm.read_poins,
+          0,
+        );
         const totalScrollCompletedPoins = subMateriStats.reduce(
           (sum, sm) => sum + sm.scroll_completed_poins,
-          0
+          0,
         );
-        const moduleReadPercentage = totalPoins > 0
-          ? Math.round((totalScrollCompletedPoins / totalPoins) * 100)
-          : 0;
+        const moduleReadPercentage =
+          totalPoins > 0
+            ? Math.round((totalScrollCompletedPoins / totalPoins) * 100)
+            : 0;
 
         // Only include if user has some progress in this module
         if (totalScrollCompletedPoins > 0) {
@@ -1280,8 +1415,10 @@ export const getReadingProgressStats = async () => {
       }
     }
 
-    console.log(`[ReadingProgress] Generated ${readingProgressData.length} reading progress records`);
-    console.log('========== [getReadingProgressStats] END ==========\n');
+    console.log(
+      `[ReadingProgress] Generated ${readingProgressData.length} reading progress records`,
+    );
+    console.log("========== [getReadingProgressStats] END ==========\n");
 
     return readingProgressData;
   } catch (error) {
