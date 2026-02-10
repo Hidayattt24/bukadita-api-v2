@@ -1,13 +1,16 @@
 # 🚀 FIX: Scroll Progress Endpoint Missing (404)
 
 ## ❌ Masalah
+
 Endpoint scroll-complete dan scroll-status mengembalikan 404 di production:
+
 ```
 POST /api/v1/progress/poins/:id/scroll-complete → 404
 GET /api/v1/progress/poins/:id/scroll-status → 404
 ```
 
 ## ✅ Status Code
+
 ✅ Routes sudah ada di `src/routes/progress.routes.ts` (lines 27-28)
 ✅ Controller functions sudah ada di `src/controllers/progress.controller.ts` (lines 266-319)
 ✅ Service functions sudah ada di `src/services/progress.service.ts` (lines 900-947)
@@ -16,6 +19,7 @@ GET /api/v1/progress/poins/:id/scroll-status → 404
 ## 🔧 Solusi: Re-deploy Backend
 
 ### Option 1: Push ke Git & Auto-deploy (RECOMMENDED)
+
 ```bash
 cd "d:\....Bismillah Sempro\Bukadita REVISI\bukadita-api-v2"
 
@@ -28,6 +32,7 @@ git push origin main
 Vercel akan otomatis deploy dari git push.
 
 ### Option 2: Manual Re-deploy via Vercel Dashboard
+
 1. Buka https://vercel.com/dashboard
 2. Pilih project **bukadita-api-v2**
 3. Klik tab **Deployments**
@@ -36,6 +41,7 @@ Vercel akan otomatis deploy dari git push.
 6. Klik **Redeploy**
 
 ### Option 3: Force Deploy via Vercel CLI
+
 ```bash
 cd "d:\....Bismillah Sempro\Bukadita REVISI\bukadita-api-v2"
 
@@ -54,12 +60,14 @@ vercel --prod
 Setelah deployment selesai, test endpoint:
 
 ### Test 1: Get Scroll Status
+
 ```bash
 curl -X GET "https://api-bukadita.vercel.app/api/v1/progress/poins/a15f90ec-4c01-44a8-9576-c35532fa300f/scroll-status" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 Expected Response:
+
 ```json
 {
   "error": false,
@@ -73,6 +81,7 @@ Expected Response:
 ```
 
 ### Test 2: Mark Scroll Complete
+
 ```bash
 curl -X POST "https://api-bukadita.vercel.app/api/v1/progress/poins/a15f90ec-4c01-44a8-9576-c35532fa300f/scroll-complete" \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -80,6 +89,7 @@ curl -X POST "https://api-bukadita.vercel.app/api/v1/progress/poins/a15f90ec-4c0
 ```
 
 Expected Response:
+
 ```json
 {
   "error": false,
@@ -107,12 +117,14 @@ Expected Response:
 ## 🔍 Troubleshooting
 
 ### Jika masih 404 setelah deploy:
+
 1. **Cek deployment logs** di Vercel Dashboard
 2. **Pastikan build success** tanpa error
 3. **Clear browser cache** (Ctrl+Shift+R)
 4. **Cek routes terdaftar**: pastikan `progressRoutes` di-import dan di-mount di `app.ts`
 
 ### Jika error "Route not found":
+
 1. Cek `src/app.ts` line 197:
    ```typescript
    app.use(`${API_PREFIX}/progress`, progressRoutes);
@@ -120,6 +132,7 @@ Expected Response:
 2. Pastikan `progress.routes.ts` di-import dengan benar
 
 ### Jika error di Prisma:
+
 ```bash
 # Regenerate Prisma Client
 npx prisma generate
@@ -131,6 +144,7 @@ git push
 ```
 
 ## 📝 Catatan
+
 - Localhost bekerja karena menggunakan code terbaru
 - Production masih menggunakan deployment lama yang belum punya endpoint ini
 - Setelah re-deploy, production akan sama dengan localhost
