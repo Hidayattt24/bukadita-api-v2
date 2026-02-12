@@ -229,24 +229,44 @@ export const getMaterialQuiz = async (materialId: string) => {
         published: true,
       },
       include: {
-        questions: {
-          orderBy: {
-            order_index: "asc",
-          },
-          select: {
-            id: true,
-            question_text: true,
-            options: true,
-            explanation: true,
-            order_index: true,
-            // Don't include correct_answer_index for security
-          },
-        },
+        questions: true, // ✅ REMOVED orderBy to allow true randomization
       },
     });
 
     if (!quiz) {
-      return { quiz: null };
+      return { 
+        quiz: null,
+        quiz_id: null,
+        quiz_title: null,
+        questions: [],
+      };
+    }
+
+    // ✅ Randomize questions if questions_to_show is set
+    let questionsToReturn = quiz.questions;
+    
+    if (quiz.questions_to_show && quiz.questions_to_show > 0) {
+      // Shuffle questions using Fisher-Yates algorithm
+      const shuffled = [...quiz.questions];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      
+      // Take only the specified number of questions
+      questionsToReturn = shuffled.slice(0, quiz.questions_to_show);
+      
+      logger.info(`Quiz randomized: showing ${questionsToReturn.length} out of ${quiz.questions.length} questions`);
+    } else {
+      // ✅ Even if questions_to_show is not set, still shuffle for variety
+      const shuffled = [...quiz.questions];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      questionsToReturn = shuffled;
+      
+      logger.info(`Quiz shuffled: showing all ${questionsToReturn.length} questions in random order`);
     }
 
     return {
@@ -256,8 +276,21 @@ export const getMaterialQuiz = async (materialId: string) => {
         description: quiz.description,
         time_limit_seconds: quiz.time_limit_seconds,
         passing_score: quiz.passing_score,
-        questions: quiz.questions,
+        quiz_type: quiz.quiz_type,
+        published: quiz.published,
+        questions_to_show: quiz.questions_to_show,
+        total_questions: quiz.questions.length, // Total available questions
       },
+      quiz_id: quiz.id,
+      quiz_title: quiz.title,
+      questions: questionsToReturn.map((q) => ({
+        id: q.id,
+        question_text: q.question_text,
+        options: q.options,
+        correct_answer_index: q.correct_answer_index,
+        explanation: q.explanation,
+        order_index: q.order_index,
+      })),
     };
   } catch (error) {
     logger.error("Error fetching material quiz:", error);

@@ -54,7 +54,7 @@ export const getQuizById = async (
         },
       },
       questions: {
-        orderBy: { order_index: "asc" },
+        // ✅ REMOVED orderBy to allow randomization
         select: {
           id: true,
           question_text: true,
@@ -71,7 +71,37 @@ export const getQuizById = async (
     throw new Error("Quiz not found");
   }
 
-  return quiz;
+  // ✅ Randomize questions using Fisher-Yates algorithm
+  let questionsToReturn = quiz.questions;
+  
+  if (quiz.questions_to_show && quiz.questions_to_show > 0) {
+    // Shuffle questions
+    const shuffled = [...quiz.questions];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    
+    // Take only the specified number of questions
+    questionsToReturn = shuffled.slice(0, quiz.questions_to_show);
+    
+    console.log(`[getQuizById] Quiz randomized: showing ${questionsToReturn.length} out of ${quiz.questions.length} questions`);
+  } else {
+    // ✅ Even if questions_to_show is not set, still shuffle for variety
+    const shuffled = [...quiz.questions];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    questionsToReturn = shuffled;
+    
+    console.log(`[getQuizById] Quiz shuffled: showing all ${questionsToReturn.length} questions in random order`);
+  }
+
+  return {
+    ...quiz,
+    questions: questionsToReturn,
+  };
 };
 
 export const startQuiz = async (userId: string, quizId: string) => {
@@ -149,6 +179,12 @@ export const submitQuiz = async (
     }>;
   }
 ) => {
+  // ✅ VALIDATION: Prevent empty submissions
+  if (!data.answers || data.answers.length === 0) {
+    console.error('[submitQuiz] ❌ Empty answers array, rejecting submission');
+    throw new Error("Cannot submit quiz with no answers");
+  }
+
   // Get quiz with questions
   const quiz = await prisma.materisQuiz.findUnique({
     where: { id: data.quiz_id },
@@ -180,8 +216,23 @@ export const submitQuiz = async (
     };
   });
 
-  const score = (correct_answers / quiz.questions.length) * 100;
+  // ✅ FIX: Calculate score based on answered questions, not total questions in database
+  // If questions_to_show is set, user only sees subset of questions
+  const total_questions_answered = data.answers.length;
+  const score = (correct_answers / total_questions_answered) * 100;
   const passed = score >= quiz.passing_score;
+
+  console.log(`[submitQuiz] 📊 Score calculation:`, {
+    user_id: userId,
+    quiz_id: data.quiz_id,
+    correct_answers,
+    total_questions_answered,
+    total_questions_in_db: quiz.questions.length,
+    questions_to_show: quiz.questions_to_show,
+    score: score.toFixed(2),
+    passing_score: quiz.passing_score,
+    passed,
+  });
 
   // Create quiz attempt
   const attempt = await prisma.quizAttempt.create({
@@ -189,7 +240,7 @@ export const submitQuiz = async (
       quiz_id: data.quiz_id,
       user_id: userId,
       score,
-      total_questions: quiz.questions.length,
+      total_questions: total_questions_answered, // ✅ Use answered questions count
       correct_answers,
       passed,
       answers: detailedAnswers,
@@ -197,7 +248,7 @@ export const submitQuiz = async (
     },
   });
 
-  // 🔥 NEW: If quiz passed and has sub_materi_id, mark all poins and sub-materi as completed
+  // 🔥 NEW: If quiz passed and has sub_materi_id, mark all poins and sub-materi as completed  // 🔥 NEW: If quiz passed and has sub_materi_id, mark all poins and sub-materi as completed
   console.log("[submitQuiz] 🔍 Checking if should save progress:", {
     passed,
     sub_materi_id: quiz.sub_materi_id,
@@ -322,7 +373,7 @@ export const submitQuiz = async (
   return {
     attempt_id: attempt.id,
     score: parseFloat(score.toFixed(2)),
-    total_questions: quiz.questions.length,
+    total_questions: total_questions_answered, // ✅ Use answered questions count
     correct_answers,
     passed,
     passing_score: quiz.passing_score,

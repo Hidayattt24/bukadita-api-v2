@@ -129,6 +129,7 @@ model MaterisQuiz {
   description         String?  @db.Text
   time_limit_seconds  Int      @default(600)
   passing_score       Int      @default(70)
+  questions_to_show   Int?     // Jumlah soal yang ditampilkan ke user (null = tampilkan semua)
   published           Boolean  @default(false)
   created_at          DateTime @default(now()) @db.Timestamptz()
   updated_at          DateTime @updatedAt @db.Timestamptz()

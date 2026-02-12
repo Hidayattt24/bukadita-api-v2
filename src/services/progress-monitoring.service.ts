@@ -752,7 +752,7 @@ export const getUserDetailProgress = async (userId: string) => {
   try {
     console.log(`[getUserDetailProgress] Fetching data for user: ${userId}`);
 
-    // Get user data
+    // Get user data with poin progress for reading tracking
     const user = await prisma.profile.findUnique({
       where: { id: userId },
       select: {
@@ -793,6 +793,25 @@ export const getUserDetailProgress = async (userId: string) => {
             completed_at: "desc",
           },
         },
+        poinProgress: {
+          where: {
+            OR: [{ is_completed: true }, { scroll_completed: true }],
+          },
+          select: {
+            poin_id: true,
+            is_completed: true,
+            scroll_completed: true,
+            scroll_completed_at: true,
+            completed_at: true,
+            poinDetail: {
+              select: {
+                id: true,
+                title: true,
+                sub_materi_id: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -804,7 +823,7 @@ export const getUserDetailProgress = async (userId: string) => {
       `[getUserDetailProgress] User found: ${user.full_name}, Quiz attempts: ${user.quizAttempts.length}`,
     );
 
-    // Get ALL modules with their quizzes and sub-materis
+    // Get ALL modules with their quizzes and sub-materis (including poins for reading progress)
     const allModules = await prisma.module.findMany({
       where: { published: true },
       select: {
@@ -831,6 +850,15 @@ export const getUserDetailProgress = async (userId: string) => {
           select: {
             id: true,
             title: true,
+            poinDetails: {
+              select: {
+                id: true,
+                title: true,
+              },
+              orderBy: {
+                order_index: "asc",
+              },
+            },
           },
           orderBy: {
             order_index: "asc",
@@ -843,6 +871,61 @@ export const getUserDetailProgress = async (userId: string) => {
     });
 
     console.log(`[getUserDetailProgress] Total modules: ${allModules.length}`);
+
+    // Build a map of user's reading progress by sub_materi_id
+    const readingProgressBySubMateri = new Map<
+      string,
+      {
+        total_poins: number;
+        read_poins: number;
+        scroll_completed_poins: number;
+      }
+    >();
+
+    // Process user's poin progress to calculate reading stats per sub-materi
+    user.poinProgress.forEach((progress: any) => {
+      const subMateriId = progress.poinDetail?.sub_materi_id;
+      if (!subMateriId) return;
+
+      if (!readingProgressBySubMateri.has(subMateriId)) {
+        readingProgressBySubMateri.set(subMateriId, {
+          total_poins: 0,
+          read_poins: 0,
+          scroll_completed_poins: 0,
+        });
+      }
+
+      const stats = readingProgressBySubMateri.get(subMateriId)!;
+      if (progress.is_completed) {
+        stats.read_poins++;
+      }
+      if (progress.scroll_completed) {
+        stats.scroll_completed_poins++;
+      }
+    });
+
+    // Count total poins per sub-materi from modules data
+    allModules.forEach((module: any) => {
+      module.subMateris.forEach((subMateri: any) => {
+        const totalPoins = subMateri.poinDetails?.length || 0;
+        if (totalPoins > 0) {
+          const existing = readingProgressBySubMateri.get(subMateri.id);
+          if (existing) {
+            existing.total_poins = totalPoins;
+          } else {
+            readingProgressBySubMateri.set(subMateri.id, {
+              total_poins: totalPoins,
+              read_poins: 0,
+              scroll_completed_poins: 0,
+            });
+          }
+        }
+      });
+    });
+
+    console.log(
+      `[getUserDetailProgress] Reading progress tracked for ${readingProgressBySubMateri.size} sub-materis`,
+    );
 
     // Build modules progress data
     const modulesProgress = allModules.map((module: any) => {
@@ -903,8 +986,29 @@ export const getUserDetailProgress = async (userId: string) => {
             (a: any) => a.quiz_id === quiz.id,
           );
 
+          // Get reading progress for this quiz's sub-materi
+          const subMateriId = quiz.sub_materi_id;
+          const readingProgress = subMateriId
+            ? readingProgressBySubMateri.get(subMateriId)
+            : null;
+
+          const readingPercentage =
+            readingProgress && readingProgress.total_poins > 0
+              ? Math.round(
+                  (readingProgress.scroll_completed_poins /
+                    readingProgress.total_poins) *
+                    100,
+                )
+              : 0;
+
+          const isReadingComplete =
+            readingProgress &&
+            readingProgress.total_poins > 0 &&
+            readingProgress.scroll_completed_poins ===
+              readingProgress.total_poins;
+
           if (attemptsForQuiz.length === 0) {
-            // Quiz not attempted yet - return placeholder
+            // Quiz not attempted yet - return placeholder with reading progress
             return {
               quiz_id: quiz.id,
               quiz_title: quiz.title || "Untitled Quiz",
@@ -917,6 +1021,12 @@ export const getUserDetailProgress = async (userId: string) => {
               correct_answers: 0,
               answers: [],
               is_attempted: false,
+              // Reading progress data
+              reading_completed: isReadingComplete,
+              reading_percentage: readingPercentage,
+              total_poins: readingProgress?.total_poins || 0,
+              scroll_completed_poins:
+                readingProgress?.scroll_completed_poins || 0,
             };
           }
 
@@ -992,6 +1102,12 @@ export const getUserDetailProgress = async (userId: string) => {
               correct_answers: attempt.correct_answers,
               answers: answersDetail,
               is_attempted: true,
+              // Reading progress data
+              reading_completed: isReadingComplete,
+              reading_percentage: readingPercentage,
+              total_poins: readingProgress?.total_poins || 0,
+              scroll_completed_poins:
+                readingProgress?.scroll_completed_poins || 0,
             };
           });
         })

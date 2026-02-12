@@ -10,6 +10,7 @@ export const createQuiz = async (
     description?: string;
     time_limit_seconds?: number;
     passing_score?: number;
+    questions_to_show?: number;
     quiz_type?: string;
     published?: boolean;
   },
@@ -46,6 +47,7 @@ export const createQuiz = async (
       description: data.description,
       time_limit_seconds: data.time_limit_seconds || 600,
       passing_score: data.passing_score || 70,
+      questions_to_show: data.questions_to_show,
       quiz_type: data.quiz_type || "module",
       published: data.published || false,
       created_by: userId,
@@ -108,6 +110,7 @@ export const updateQuiz = async (
     time_limit_seconds?: number;
     passing_score?: number;
     quiz_type?: string;
+    questions_to_show?: number;
     published?: boolean;
   },
   userId: string
@@ -360,6 +363,7 @@ export const getAllQuizzes = async (params: {
         quiz_type: quiz.quiz_type,
         time_limit_seconds: quiz.time_limit_seconds,
         passing_score: quiz.passing_score,
+        questions_to_show: quiz.questions_to_show,
         published: quiz.published,
         total_questions: quiz._count.questions,
         total_attempts: quiz._count.attempts,
@@ -433,6 +437,7 @@ export const getQuizWithQuestions = async (quizId: string) => {
       quiz_type: quiz.quiz_type,
       time_limit_seconds: quiz.time_limit_seconds,
       passing_score: quiz.passing_score,
+      questions_to_show: quiz.questions_to_show,
       published: quiz.published,
       questions: quiz.questions,
       total_attempts: quiz._count.attempts,
