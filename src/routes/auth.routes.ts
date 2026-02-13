@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as authController from "../controllers/auth.controller";
+import * as passwordResetController from "../controllers/password-reset.controller";
 import { validate } from "../middlewares/validation.middleware";
 import { registerSchema, loginSchema } from "../utils/validation.util";
 import { requireAuth } from "../middlewares/auth.middleware";
@@ -17,5 +18,10 @@ router.post(
   requireAuth,
   authController.createMissingProfile
 );
+
+// Password reset routes
+router.post("/request-password-reset", passwordResetController.requestPasswordReset);
+router.post("/verify-otp-reset-password", passwordResetController.verifyOTPAndResetPassword);
+router.post("/resend-otp", passwordResetController.resendOTP);
 
 export default router;

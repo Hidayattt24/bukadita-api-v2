@@ -16,6 +16,7 @@ import adminRoutes from "./routes/admin.routes";
 import quizAdminRoutes from "./routes/quiz.admin.routes";
 import noteRoutes from "./routes/note.routes";
 import userRoutes from "./routes/user.routes";
+import whatsappRoutes from "./routes/whatsapp.routes";
 
 const app: Application = express();
 
@@ -194,6 +195,7 @@ app.use(`${API_PREFIX}/admin`, adminRoutes);
 app.use(`${API_PREFIX}/admin/quizzes`, quizAdminRoutes);
 app.use(`${API_PREFIX}/notes`, noteRoutes);
 app.use(`${API_PREFIX}/users`, userRoutes);
+app.use(`${API_PREFIX}/whatsapp`, whatsappRoutes);
 
 // 404 handler
 app.use((req, res) => {
