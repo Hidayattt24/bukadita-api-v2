@@ -5,10 +5,11 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "tsc && npm run copy:views",
+    "copy:views": "node -e \"require('fs').cpSync('src/views', 'dist/views', {recursive: true})\"",
     "start": "node dist/server.js",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && tsc",
+    "vercel-build": "prisma generate && tsc && npm run copy:views",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

@@ -1,0 +1,1161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BUKADITA API v1 - Documentation</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --primary: #2563eb;
+        --primary-dark: #1e40af;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --dark: #1f2937;
+        --gray: #6b7280;
+        --light-gray: #f3f4f6;
+        --border: #e5e7eb;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: var(--dark);
+        background: #ffffff;
+      }
+
+      .header {
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--primary-dark) 100%
+        );
+        color: white;
+        padding: 2rem 0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 2rem;
+      }
+
+      .header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .header p {
+        font-size: 1.125rem;
+        opacity: 0.9;
+      }
+
+      .nav {
+        background: white;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        border-bottom: 2px solid var(--border);
+        padding: 1rem 0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+      }
+
+      .nav-links a {
+        color: var(--dark);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.3s;
+      }
+
+      .nav-links a:hover {
+        color: var(--primary);
+      }
+
+      .content {
+        padding: 3rem 0;
+      }
+
+      .section {
+        margin-bottom: 4rem;
+      }
+
+      .section h2 {
+        font-size: 2rem;
+        color: var(--dark);
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 3px solid var(--primary);
+      }
+
+      .section h3 {
+        font-size: 1.5rem;
+        color: var(--dark);
+        margin: 2rem 0 1rem;
+      }
+
+      .endpoint {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+
+      .endpoint-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .method {
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 0.875rem;
+      }
+
+      .method.get {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+      .method.post {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .method.put {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .method.patch {
+        background: #e0e7ff;
+        color: #3730a3;
+      }
+      .method.delete {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      .endpoint-path {
+        font-family: "Courier New", monospace;
+        font-weight: 500;
+        color: var(--dark);
+      }
+
+      .badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+
+      .badge.public {
+        background: #e0e7ff;
+        color: #3730a3;
+      }
+      .badge.protected {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .badge.admin {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      .endpoint-description {
+        color: var(--gray);
+        margin-bottom: 1rem;
+      }
+
+      .code-block {
+        background: #1f2937;
+        color: #f3f4f6;
+        padding: 1rem;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 1rem 0;
+        font-family: "Courier New", monospace;
+        font-size: 0.875rem;
+      }
+
+      .info-box {
+        background: var(--light-gray);
+        border-left: 4px solid var(--primary);
+        padding: 1rem;
+        border-radius: 4px;
+        margin: 1rem 0;
+      }
+
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+      }
+
+      .table th,
+      .table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .table th {
+        background: var(--light-gray);
+        font-weight: 600;
+      }
+
+      .search-box {
+        margin: 2rem 0;
+      }
+
+      .search-box input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid var(--border);
+        border-radius: 6px;
+        font-size: 1rem;
+      }
+
+      .search-box input:focus {
+        outline: none;
+        border-color: var(--primary);
+      }
+
+      .footer {
+        background: var(--dark);
+        color: white;
+        padding: 2rem 0;
+        margin-top: 4rem;
+        text-align: center;
+      }
+
+      .highlight {
+        background: #fef3c7;
+        padding: 0.125rem 0.25rem;
+        border-radius: 2px;
+      }
+
+      @media (max-width: 768px) {
+        .header h1 {
+          font-size: 1.75rem;
+        }
+
+        .endpoint-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="container">
+        <h1>🎓 BUKADITA API v1</h1>
+        <p>
+          Dokumentasi API Lengkap - Platform Pembelajaran Kader Kesehatan
+          Masyarakat
+        </p>
+        <p style="margin-top: 0.5rem; font-size: 0.875rem">
+          Version 1.0.0 | Base URL:
+          <code
+            style="
+              background: rgba(255, 255, 255, 0.2);
+              padding: 0.25rem 0.5rem;
+              border-radius: 4px;
+            "
+            >/api/v1</code
+          >
+        </p>
+      </div>
+    </div>
+
+    <div class="nav">
+      <div class="container">
+        <div class="nav-links">
+          <a href="#overview">Overview</a>
+          <a href="#authentication">Authentication</a>
+          <a href="#modules">Modules</a>
+          <a href="#materials">Materials</a>
+          <a href="#quizzes">Quizzes</a>
+          <a href="#progress">Progress</a>
+          <a href="#admin">Admin</a>
+          <a href="#notes">Notes</a>
+          <a href="#users">Users</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="container">
+        <!-- Search Box -->
+        <div class="search-box">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="🔍 Cari endpoint... (contoh: login, modules, quiz)"
+          />
+        </div>
+
+        <!-- Overview Section -->
+        <section class="section" id="overview">
+          <h2>📋 Overview</h2>
+          <div class="info-box">
+            <p><strong>Base URL:</strong> <code>http://localhost:8080</code></p>
+            <p><strong>API Prefix:</strong> <code>/api/v1</code></p>
+            <p><strong>Version:</strong> 1.0.0</p>
+            <p><strong>Total Endpoints:</strong> 119</p>
+          </div>
+
+          <h3>Response Format</h3>
+          <p>Semua response menggunakan format standar:</p>
+
+          <p><strong>Success Response:</strong></p>
+          <div class="code-block">
+            { "error": false, "code": "SUCCESS_CODE", "message": "Success
+            message", "data": {} }
+          </div>
+
+          <p><strong>Error Response:</strong></p>
+          <div class="code-block">
+            { "error": true, "code": "ERROR_CODE", "message": "Error message" }
+          </div>
+
+          <h3>HTTP Status Codes</h3>
+          <table class="table">
+            <tr>
+              <th>Code</th>
+              <th>Status</th>
+              <th>Description</th>
+            </tr>
+            <tr>
+              <td>200</td>
+              <td>OK</td>
+              <td>Request berhasil</td>
+            </tr>
+            <tr>
+              <td>201</td>
+              <td>Created</td>
+              <td>Resource berhasil dibuat</td>
+            </tr>
+            <tr>
+              <td>400</td>
+              <td>Bad Request</td>
+              <td>Validation error</td>
+            </tr>
+            <tr>
+              <td>401</td>
+              <td>Unauthorized</td>
+              <td>Token tidak valid atau expired</td>
+            </tr>
+            <tr>
+              <td>403</td>
+              <td>Forbidden</td>
+              <td>Tidak memiliki permission</td>
+            </tr>
+            <tr>
+              <td>404</td>
+              <td>Not Found</td>
+              <td>Resource tidak ditemukan</td>
+            </tr>
+            <tr>
+              <td>500</td>
+              <td>Internal Server Error</td>
+              <td>Error server</td>
+            </tr>
+          </table>
+
+          <h3>User Roles</h3>
+          <table class="table">
+            <tr>
+              <th>Role</th>
+              <th>Description</th>
+              <th>Capabilities</th>
+            </tr>
+            <tr>
+              <td><span class="badge protected">USER</span></td>
+              <td>User biasa (Kader)</td>
+              <td>View modules, take quizzes, track progress</td>
+            </tr>
+            <tr>
+              <td><span class="badge admin">ADMIN</span></td>
+              <td>Administrator</td>
+              <td>Manage content, view all user progress</td>
+            </tr>
+            <tr>
+              <td><span class="badge admin">SUPER_ADMIN</span></td>
+              <td>Super Administrator</td>
+              <td>Full access + user management</td>
+            </tr>
+          </table>
+        </section>
+
+        <!-- Authentication Section -->
+        <section class="section" id="authentication">
+          <h2>🔐 Authentication</h2>
+
+          <div class="info-box">
+            <p><strong>Authentication Method:</strong> JWT Bearer Token</p>
+            <p>
+              <strong>Header Format:</strong>
+              <code>Authorization: Bearer &lt;token&gt;</code>
+            </p>
+            <p>
+              <strong>Token Expiry:</strong> Access Token (24h), Refresh Token
+              (7d)
+            </p>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/auth/register</span>
+              <span class="badge public">Public</span>
+            </div>
+            <div class="endpoint-description">
+              Register user baru dengan role USER
+            </div>
+            <div class="code-block">
+              // Request Body { "email": "user@example.com", "password":
+              "password123", "name": "Nama User", "phone": "081234567890" }
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/auth/login</span>
+              <span class="badge public">Public</span>
+            </div>
+            <div class="endpoint-description">Login untuk user biasa</div>
+            <div class="code-block">
+              // Request Body { "email": "user@example.com", "password":
+              "password123" } // Response { "error": false, "code":
+              "LOGIN_SUCCESS", "data": { "user": { "id": "uuid", "email": "...",
+              "role": "USER" }, "tokens": { "accessToken": "jwt_token",
+              "refreshToken": "refresh_token" } } }
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/auth/admin-login</span>
+              <span class="badge public">Public</span>
+            </div>
+            <div class="endpoint-description">
+              Login khusus untuk admin/super admin
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/auth/refresh</span>
+              <span class="badge public">Public</span>
+            </div>
+            <div class="endpoint-description">
+              Refresh access token menggunakan refresh token
+            </div>
+            <div class="code-block">
+              // Request Body { "refreshToken": "refresh_token_here" }
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/auth/logout</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">
+              Logout user dan invalidate token
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/auth/profile</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">
+              Create atau update profile user
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/auth/request-password-reset</span>
+              <span class="badge public">Public</span>
+            </div>
+            <div class="endpoint-description">
+              Request OTP untuk reset password
+            </div>
+            <div class="code-block">
+              // Request Body { "phone": "081234567890" }
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/auth/verify-otp-reset-password</span>
+              <span class="badge public">Public</span>
+            </div>
+            <div class="endpoint-description">
+              Verifikasi OTP dan reset password
+            </div>
+            <div class="code-block">
+              // Request Body { "phone": "081234567890", "otp": "123456",
+              "newPassword": "newPassword123" }
+            </div>
+          </div>
+        </section>
+
+        <!-- Modules Section -->
+        <section class="section" id="modules">
+          <h2>📚 Modules</h2>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/modules</span>
+              <span class="badge public">Public</span>
+            </div>
+            <div class="endpoint-description">
+              Mendapatkan semua modul yang tersedia
+            </div>
+            <p><strong>Query Parameters:</strong> page, limit</p>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/modules/:slug</span>
+              <span class="badge public">Public</span>
+            </div>
+            <div class="endpoint-description">
+              Mendapatkan detail modul berdasarkan slug
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/modules</span>
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">Membuat modul baru</div>
+            <div class="code-block">
+              // Request Body { "title": "Modul Baru", "slug": "modul-baru",
+              "description": "Deskripsi modul", "order": 1, "isPublished": true
+              }
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method put">PUT</span>
+              <span class="endpoint-path">/modules/:id</span>
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">Update modul yang ada</div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method delete">DELETE</span>
+              <span class="endpoint-path">/modules/:id</span>
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">Hapus modul</div>
+          </div>
+        </section>
+
+        <!-- Materials Section -->
+        <section class="section" id="materials">
+          <h2>📖 Materials</h2>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/materials</span>
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">
+              Get semua materi (termasuk unpublished)
+            </div>
+            <p><strong>Query Parameters:</strong> moduleId, page, limit</p>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/materials/public</span>
+              <span class="badge public">Public</span>
+            </div>
+            <div class="endpoint-description">
+              Get materi yang published saja
+            </div>
+            <p><strong>Query Parameters:</strong> moduleId (required)</p>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/materials/:id/public</span>
+              <span class="badge public">Public</span>
+            </div>
+            <div class="endpoint-description">
+              Get detail materi beserta sub materi dan poin detail
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/materials/:id/quiz</span>
+              <span class="badge public">Public</span>
+            </div>
+            <div class="endpoint-description">
+              Get quiz yang terkait dengan materi
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/materials/:id/points</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">
+              Get poin details untuk materi tertentu
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/materials</span>
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">Membuat materi baru</div>
+            <div class="code-block">
+              // Request Body { "moduleId": "module_uuid", "title": "Materi
+              Baru", "slug": "materi-baru", "description": "Deskripsi materi",
+              "order": 1, "isPublished": true }
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/materials/points</span>
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">Membuat poin detail baru</div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/materials/points/:id/media</span>
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">
+              Upload media (gambar/video) ke poin detail
+            </div>
+            <p><strong>Content-Type:</strong> multipart/form-data</p>
+            <p><strong>Max Size:</strong> 10MB</p>
+          </div>
+        </section>
+
+        <!-- Quizzes Section -->
+        <section class="section" id="quizzes">
+          <h2>📝 Quizzes</h2>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/quizzes/module/:moduleId</span>
+              <span class="badge public">Public</span>
+            </div>
+            <div class="endpoint-description">
+              Get semua quiz untuk modul tertentu
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/quizzes/:id</span>
+              <span class="badge public">Public</span>
+            </div>
+            <div class="endpoint-description">
+              Get detail quiz (tanpa pertanyaan)
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/quizzes/start</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">
+              Mulai mengerjakan quiz (mendapat soal)
+            </div>
+            <div class="code-block">
+              // Request Body { "quizId": "quiz_uuid" } // Response { "error":
+              false, "data": { "attemptId": "attempt_uuid", "questions": [...],
+              "timeLimit": 30 } }
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/quizzes/submit</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">Submit jawaban quiz</div>
+            <div class="code-block">
+              // Request Body { "attemptId": "attempt_uuid", "answers": [ {
+              "questionId": "question_uuid", "selectedOption": "opt1" } ] }
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/quizzes/attempts/me</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">
+              Get riwayat quiz attempts user
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/quizzes/attempts/my</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">
+              Get riwayat quiz attempts user per modul
+            </div>
+            <p><strong>Query Parameters:</strong> moduleId (optional)</p>
+          </div>
+        </section>
+
+        <!-- Progress Section -->
+        <section class="section" id="progress">
+          <h2>📊 Progress</h2>
+
+          <h3>User Progress</h3>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/progress/modules</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">
+              Get progress semua modul user
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/progress/modules/:id</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">
+              Get detail progress modul tertentu
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path"
+                >/progress/sub-materis/:id/complete</span
+              >
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">
+              Menandai sub materi sebagai selesai
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/progress/poins/:id/complete</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">
+              Menandai poin sebagai selesai
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path"
+                >/progress/poins/:id/scroll-complete</span
+              >
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">
+              Menandai poin sudah di-scroll sampai bawah
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/progress/stats</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">
+              Get statistik user (total progress, quiz, dll)
+            </div>
+          </div>
+        </section>
+
+        <!-- Admin Section -->
+        <section class="section" id="admin">
+          <h2>🔒 Admin</h2>
+
+          <h3>Progress Monitoring</h3>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path"
+                >/admin/progress-monitoring/stats</span
+              >
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">
+              Get statistik monitoring progress keseluruhan
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path"
+                >/admin/progress-monitoring/module-stats</span
+              >
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">
+              Get statistik completion per modul
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path"
+                >/admin/progress-monitoring/stuck-users/:moduleId</span
+              >
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">
+              Get list user yang stuck di modul tertentu
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path"
+                >/admin/progress-monitoring/users</span
+              >
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">Get list progress semua user</div>
+            <p>
+              <strong>Query Parameters:</strong> page, limit, search, moduleId
+            </p>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path"
+                >/admin/progress-monitoring/users/:userId</span
+              >
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">
+              Get detail progress user tertentu
+            </div>
+          </div>
+
+          <h3>User Management</h3>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/admin/users</span>
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">Get semua users</div>
+            <p><strong>Query Parameters:</strong> page, limit, role, search</p>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method patch">PATCH</span>
+              <span class="endpoint-path">/admin/users/:userId/role</span>
+              <span class="badge admin">Super Admin Only</span>
+            </div>
+            <div class="endpoint-description">Update role user</div>
+            <div class="code-block">// Request Body { "role": "ADMIN" }</div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/admin/users</span>
+              <span class="badge admin">Super Admin Only</span>
+            </div>
+            <div class="endpoint-description">Membuat user baru</div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method delete">DELETE</span>
+              <span class="endpoint-path">/admin/users/:userId</span>
+              <span class="badge admin">Super Admin Only</span>
+            </div>
+            <div class="endpoint-description">Hapus user</div>
+          </div>
+
+          <h3>Quiz Management</h3>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/admin/quizzes</span>
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">
+              Get semua quiz (termasuk unpublished)
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/admin/quizzes</span>
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">Membuat quiz baru</div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path"
+                >/admin/quizzes/:quizId/questions</span
+              >
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">
+              Menambahkan pertanyaan ke quiz
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/admin/quiz-attempts</span>
+              <span class="badge admin">Admin</span>
+            </div>
+            <div class="endpoint-description">Get semua quiz attempts</div>
+          </div>
+        </section>
+
+        <!-- Notes Section -->
+        <section class="section" id="notes">
+          <h2>📝 Notes</h2>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/notes</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">Get semua catatan user</div>
+            <p><strong>Query Parameters:</strong> moduleId, isPinned, search</p>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/notes</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">Membuat catatan baru</div>
+            <div class="code-block">
+              // Request Body { "title": "Catatan Baru", "content": "Isi
+              catatan", "moduleId": "module_uuid", "materialId": "material_uuid"
+              }
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method put">PUT</span>
+              <span class="endpoint-path">/notes/:id</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">Update catatan</div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method delete">DELETE</span>
+              <span class="endpoint-path">/notes/:id</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">Hapus catatan</div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method patch">PATCH</span>
+              <span class="endpoint-path">/notes/:id/pin</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">Pin/unpin catatan</div>
+          </div>
+        </section>
+
+        <!-- Users Section -->
+        <section class="section" id="users">
+          <h2>👤 Users</h2>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">/users/me</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">
+              Get profile user yang sedang login
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method put">PUT</span>
+              <span class="endpoint-path">/users/me</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">Update profile user</div>
+            <div class="code-block">
+              // Request Body { "name": "Nama Updated", "phone": "081234567890",
+              "address": "Alamat", "university": "Kampus", "major": "Jurusan" }
+            </div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/users/me/profile-photo</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">Upload foto profil</div>
+            <p><strong>Content-Type:</strong> multipart/form-data</p>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method delete">DELETE</span>
+              <span class="endpoint-path">/users/me/profile-photo</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">Hapus foto profil</div>
+          </div>
+
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">/users/me/change-password</span>
+              <span class="badge protected">Protected</span>
+            </div>
+            <div class="endpoint-description">Ganti password</div>
+            <div class="code-block">
+              // Request Body { "currentPassword": "oldPassword123",
+              "newPassword": "newPassword123" }
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="container">
+        <p><strong>BUKADITA API v1</strong></p>
+        <p>Version 1.0.0 | Last Updated: February 19, 2026</p>
+        <p style="margin-top: 1rem">
+          📖 Full Documentation:
+          <a href="/api/v1" style="color: #60a5fa">API Index</a>
+        </p>
+      </div>
+    </div>
+
+    <script>
+      // Search functionality
+      const searchInput = document.getElementById("searchInput");
+      const endpoints = document.querySelectorAll(".endpoint");
+
+      searchInput.addEventListener("input", (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+
+        endpoints.forEach((endpoint) => {
+          const text = endpoint.textContent.toLowerCase();
+          if (text.includes(searchTerm)) {
+            endpoint.style.display = "block";
+          } else {
+            endpoint.style.display = "none";
+          }
+        });
+      });
+
+      // Smooth scroll for navigation
+      document.querySelectorAll(".nav-links a").forEach((anchor) => {
+        anchor.addEventListener("click", function (e) {
+          e.preventDefault();
+          const target = document.querySelector(this.getAttribute("href"));
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      });
+    </script>
+  </body>
+</html>

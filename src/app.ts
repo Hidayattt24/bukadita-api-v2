@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
 import morgan from "morgan";
+import path from "path";
 import { errorHandler } from "./middlewares/error.middleware";
 import logger from "./config/logger";
 
@@ -49,7 +50,7 @@ const getAllowedOrigins = () => {
 const corsOptions = {
   origin: (
     origin: string | undefined,
-    callback: (err: Error | null, allow?: boolean) => void
+    callback: (err: Error | null, allow?: boolean) => void,
   ) => {
     const allowedOrigins = getAllowedOrigins();
 
@@ -103,7 +104,7 @@ app.use(compression());
 app.use(
   morgan("combined", {
     stream: { write: (message) => logger.info(message.trim()) },
-  })
+  }),
 );
 
 // Root redirect to health
@@ -179,8 +180,24 @@ app.get(`${API_PREFIX}`, (req, res) => {
           users: "GET|PUT|DELETE /api/v1/admin/users",
         },
       },
-      documentation: "https://github.com/Hidayattt24/bukadita-api-v2",
+      documentation: "GET /api/v1/docs - Full Web Documentation",
+      documentationUrl: `${process.env.NODE_ENV === "production" ? "https" : "http"}://${req.get("host")}/api/v1/docs`,
     },
+  });
+});
+
+// API Web Documentation
+app.get(`${API_PREFIX}/docs`, (req, res) => {
+  const docsPath = path.join(__dirname, "views", "api-docs.html");
+  res.sendFile(docsPath, (err) => {
+    if (err) {
+      logger.error("Error serving documentation:", err);
+      res.status(404).json({
+        error: true,
+        code: "DOCS_NOT_FOUND",
+        message: "Documentation file not found",
+      });
+    }
   });
 });
 
