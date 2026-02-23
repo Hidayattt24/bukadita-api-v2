@@ -368,44 +368,52 @@ export const getProgressStats = async () => {
       prisma.module.count({ where: { published: true } }).catch(() => 0),
       prisma.subMateri.count({ where: { published: true } }).catch(() => 0),
       prisma.materisQuiz.count({ where: { published: true } }).catch(() => 0),
-      prisma.userModuleProgress.count({ where: { status: "completed" } }).catch(() => 0),
+      prisma.userModuleProgress
+        .count({ where: { status: "completed" } })
+        .catch(() => 0),
       prisma.quizAttempt.count().catch(() => 0),
       prisma.quizAttempt.count({ where: { passed: true } }).catch(() => 0),
-      prisma.userModuleProgress.count({
-        where: {
-          last_accessed_at: {
-            gte: oneDayAgo,
+      prisma.userModuleProgress
+        .count({
+          where: {
+            last_accessed_at: {
+              gte: oneDayAgo,
+            },
           },
-        },
-      }).catch(() => 0),
-      prisma.profile.count({
-        where: {
-          role: "pengguna",
-          created_at: {
-            gte: sevenDaysAgo,
+        })
+        .catch(() => 0),
+      prisma.profile
+        .count({
+          where: {
+            role: "pengguna",
+            created_at: {
+              gte: sevenDaysAgo,
+            },
           },
-        },
-      }).catch(() => 0),
+        })
+        .catch(() => 0),
     ]);
 
     // Get module completion stats (safely handle if modules table doesn't exist)
-    const moduleStats = await prisma.module.findMany({
-      where: { published: true },
-      select: {
-        id: true,
-        title: true,
-        userProgress: {
-          select: {
-            status: true,
+    const moduleStats = await prisma.module
+      .findMany({
+        where: { published: true },
+        select: {
+          id: true,
+          title: true,
+          userProgress: {
+            select: {
+              status: true,
+            },
           },
         },
-      },
-    }).catch(() => []);
+      })
+      .catch(() => []);
 
     const moduleCompletionStats = moduleStats.map((module) => {
       const totalEnrolled = module.userProgress.length;
       const totalCompleted = module.userProgress.filter(
-        (p) => p.status === "completed"
+        (p) => p.status === "completed",
       ).length;
       return {
         module_id: module.id,
@@ -425,35 +433,37 @@ export const getProgressStats = async () => {
         ? Math.round(
             moduleCompletionStats.reduce(
               (sum, m) => sum + m.completion_rate,
-              0
-            ) / moduleCompletionStats.length
+              0,
+            ) / moduleCompletionStats.length,
           )
         : 0;
 
     // Get recent activities (quiz attempts and module completions)
-    const recentQuizAttempts = await prisma.quizAttempt.findMany({
-      where: {
-        completed_at: {
-          not: null,
-        },
-      },
-      include: {
-        user: {
-          select: {
-            full_name: true,
+    const recentQuizAttempts = await prisma.quizAttempt
+      .findMany({
+        where: {
+          completed_at: {
+            not: null,
           },
         },
-        quiz: {
-          select: {
-            title: true,
+        include: {
+          user: {
+            select: {
+              full_name: true,
+            },
+          },
+          quiz: {
+            select: {
+              title: true,
+            },
           },
         },
-      },
-      orderBy: {
-        completed_at: "desc",
-      },
-      take: 10,
-    }).catch(() => []);
+        orderBy: {
+          completed_at: "desc",
+        },
+        take: 10,
+      })
+      .catch(() => []);
 
     const recentActivities = recentQuizAttempts.map((attempt) => {
       const completedAt = attempt.completed_at || new Date();
@@ -544,7 +554,7 @@ export const getAllUsers = async (params: {
         const normalizedPhone2 = "+" + search;
         searchConditions.push(
           { phone: { contains: normalizedPhone1 } },
-          { phone: { contains: normalizedPhone2 } }
+          { phone: { contains: normalizedPhone2 } },
         );
       }
 
@@ -754,7 +764,7 @@ export const createUser = async (userData: {
     if (userData.phone) {
       if (!validatePhone(userData.phone)) {
         throw new Error(
-          "Invalid phone number format. Use format: 08xxx or +62xxx"
+          "Invalid phone number format. Use format: 08xxx or +62xxx",
         );
       }
       normalizedPhone = normalizePhone(userData.phone);
@@ -814,7 +824,7 @@ export const createUser = async (userData: {
     if (userData.date_of_birth) {
       const dateOnly = userData.date_of_birth;
       if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
-        dateOfBirth = new Date(dateOnly + 'T00:00:00.000Z').toISOString();
+        dateOfBirth = new Date(dateOnly + "T00:00:00.000Z").toISOString();
       } else {
         dateOfBirth = userData.date_of_birth;
       }
@@ -866,17 +876,19 @@ export const updateUser = async (
     address?: string;
     date_of_birth?: string;
     profil_url?: string;
-  }
+  },
 ) => {
   try {
     // Convert date_of_birth to ISO DateTime if provided
     const dataToUpdate: any = { ...updateData };
-    
+
     if (dataToUpdate.date_of_birth) {
       // Convert YYYY-MM-DD to ISO DateTime (set to midnight UTC)
       const dateOnly = dataToUpdate.date_of_birth;
       if (dateOnly && /^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
-        dataToUpdate.date_of_birth = new Date(dateOnly + 'T00:00:00.000Z').toISOString();
+        dataToUpdate.date_of_birth = new Date(
+          dateOnly + "T00:00:00.000Z",
+        ).toISOString();
       }
     }
 
@@ -926,51 +938,48 @@ export const deleteUser = async (userId: string) => {
 export const getQuizPerformanceDetailed = async (moduleId?: string) => {
   try {
     // Get all modules or specific module
-    const modules = await prisma.module.findMany({
-      where: {
-        published: true,
-        ...(moduleId && { id: moduleId }),
-      },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        quizzes: {
-          where: { published: true },
-          select: {
-            id: true,
-            title: true,
-            passing_score: true,
-            attempts: {
-              where: {
-                completed_at: { not: null },
-              },
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    full_name: true,
-                    phone: true,
+    const modules = await prisma.module
+      .findMany({
+        where: {
+          published: true,
+          ...(moduleId && { id: moduleId }),
+        },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          quizzes: {
+            where: { published: true },
+            select: {
+              id: true,
+              title: true,
+              passing_score: true,
+              attempts: {
+                where: {
+                  completed_at: { not: null },
+                },
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      full_name: true,
+                      phone: true,
+                    },
                   },
                 },
-              },
-              orderBy: {
-                completed_at: "desc",
+                orderBy: {
+                  completed_at: "desc",
+                },
               },
             },
           },
         },
-      },
-    }).catch(() => []);
+      })
+      .catch(() => []);
 
     const performanceData = modules.map((module) => {
       const quizStats = module.quizzes.map((quiz) => {
         const totalAttempts = quiz.attempts.length;
-        const passedAttempts = quiz.attempts.filter((a) => a.passed).length;
-        const failedAttempts = totalAttempts - passedAttempts;
-        const passRate = totalAttempts > 0
-          ? Math.round((passedAttempts / totalAttempts) * 100)
-          : 0;
 
         // Get all attempts per user (not aggregated)
         const userAttemptsMap = new Map();
@@ -998,29 +1007,46 @@ export const getQuizPerformanceDetailed = async (moduleId?: string) => {
         });
 
         // Sort attempts by completed_at (most recent first) and calculate best score
-        const userResults = Array.from(userAttemptsMap.values()).map((userRecord) => {
-          userRecord.attempts.sort((a: any, b: any) =>
-            new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
-          );
+        const userResults = Array.from(userAttemptsMap.values()).map(
+          (userRecord) => {
+            userRecord.attempts.sort(
+              (a: any, b: any) =>
+                new Date(b.completed_at).getTime() -
+                new Date(a.completed_at).getTime(),
+            );
 
-          const bestScore = Math.max(...userRecord.attempts.map((a: any) => a.score));
-          const bestAttempt = userRecord.attempts.find((a: any) => a.score === bestScore);
+            const bestScore = Math.max(
+              ...userRecord.attempts.map((a: any) => a.score),
+            );
+            const hasPassed = userRecord.attempts.some((a: any) => a.passed); // Check if user ever passed
 
-          return {
-            ...userRecord,
-            best_score: bestScore,
-            passed: bestAttempt?.passed || false,
-            total_attempts: userRecord.attempts.length,
-          };
-        });
+            return {
+              ...userRecord,
+              best_score: bestScore,
+              passed: hasPassed, // User passed if at least ONE attempt passed
+              total_attempts: userRecord.attempts.length,
+            };
+          },
+        );
+
+        // FIX: Count UNIQUE USERS who passed (at least one passed attempt)
+        // Not total passed attempts
+        const passedUsersCount = userResults.filter((u) => u.passed).length;
+        const failedUsersCount = userResults.filter((u) => !u.passed).length;
+
+        // Pass rate based on unique users
+        const passRate =
+          userResults.length > 0
+            ? Math.round((passedUsersCount / userResults.length) * 100)
+            : 0;
 
         return {
           quiz_id: quiz.id,
           quiz_title: quiz.title,
           passing_score: quiz.passing_score,
           total_attempts: totalAttempts,
-          passed_count: passedAttempts,
-          failed_count: failedAttempts,
+          passed_count: passedUsersCount, // FIXED: Unique users who passed
+          failed_count: failedUsersCount, // FIXED: Unique users who never passed
           pass_rate: passRate,
           unique_users: userResults.length,
           user_results: userResults.sort((a, b) => b.best_score - a.best_score),
@@ -1028,12 +1054,44 @@ export const getQuizPerformanceDetailed = async (moduleId?: string) => {
       });
 
       const totalQuizzes = quizStats.length;
-      const totalAttempts = quizStats.reduce((sum, q) => sum + q.total_attempts, 0);
-      const totalPassed = quizStats.reduce((sum, q) => sum + q.passed_count, 0);
-      const totalFailed = quizStats.reduce((sum, q) => sum + q.failed_count, 0);
-      const avgPassRate = totalQuizzes > 0
-        ? Math.round(quizStats.reduce((sum, q) => sum + q.pass_rate, 0) / totalQuizzes)
-        : 0;
+      const totalAttempts = quizStats.reduce(
+        (sum, q) => sum + q.total_attempts,
+        0,
+      );
+
+      // FIX: Calculate UNIQUE users at MODULE level (not sum of quiz counts)
+      // Collect all unique users who attempted any quiz in this module
+      const moduleUsersMap = new Map<string, { passed: boolean }>();
+
+      quizStats.forEach((quiz) => {
+        quiz.user_results.forEach((userResult: any) => {
+          const userId = userResult.user_id;
+          const hasPassed = userResult.passed;
+
+          // If user doesn't exist in map, add them
+          if (!moduleUsersMap.has(userId)) {
+            moduleUsersMap.set(userId, { passed: hasPassed });
+          } else {
+            // If user exists and this quiz shows they passed, update to passed
+            // (A user is "passed" if they passed at least ONE quiz in the module)
+            const existing = moduleUsersMap.get(userId)!;
+            if (hasPassed) {
+              existing.passed = true;
+            }
+          }
+        });
+      });
+
+      // Count unique users who passed vs failed at MODULE level
+      const moduleUsers = Array.from(moduleUsersMap.values());
+      const totalPassed = moduleUsers.filter((u) => u.passed).length;
+      const totalFailed = moduleUsers.filter((u) => !u.passed).length;
+      const totalUniqueUsers = moduleUsers.length;
+
+      const avgPassRate =
+        totalUniqueUsers > 0
+          ? Math.round((totalPassed / totalUniqueUsers) * 100)
+          : 0;
 
       return {
         module_id: module.id,
@@ -1042,9 +1100,10 @@ export const getQuizPerformanceDetailed = async (moduleId?: string) => {
         total_quizzes: totalQuizzes,
         summary: {
           total_attempts: totalAttempts,
-          total_passed: totalPassed,
-          total_failed: totalFailed,
-          average_pass_rate: avgPassRate,
+          total_passed: totalPassed, // FIXED: Unique users who passed at least one quiz
+          total_failed: totalFailed, // FIXED: Unique users who never passed any quiz
+          total_unique_users: totalUniqueUsers,
+          average_pass_rate: avgPassRate, // FIXED: Based on unique users
         },
         quizzes: quizStats,
       };
@@ -1054,10 +1113,22 @@ export const getQuizPerformanceDetailed = async (moduleId?: string) => {
       modules: performanceData,
       overall_stats: {
         total_modules: performanceData.length,
-        total_quizzes: performanceData.reduce((sum, m) => sum + m.total_quizzes, 0),
-        total_attempts: performanceData.reduce((sum, m) => sum + m.summary.total_attempts, 0),
-        total_passed: performanceData.reduce((sum, m) => sum + m.summary.total_passed, 0),
-        total_failed: performanceData.reduce((sum, m) => sum + m.summary.total_failed, 0),
+        total_quizzes: performanceData.reduce(
+          (sum, m) => sum + m.total_quizzes,
+          0,
+        ),
+        total_attempts: performanceData.reduce(
+          (sum, m) => sum + m.summary.total_attempts,
+          0,
+        ),
+        total_passed: performanceData.reduce(
+          (sum, m) => sum + m.summary.total_passed,
+          0,
+        ),
+        total_failed: performanceData.reduce(
+          (sum, m) => sum + m.summary.total_failed,
+          0,
+        ),
       },
       last_updated: new Date().toISOString(),
     };
@@ -1071,60 +1142,64 @@ export const getQuizPerformanceDetailed = async (moduleId?: string) => {
 export const getRecentActivitiesClassified = async (limit: number = 20) => {
   try {
     // Get all recent quiz attempts
-    const recentAttempts = await prisma.quizAttempt.findMany({
-      where: {
-        completed_at: { not: null },
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            full_name: true,
-            profil_url: true,
-          },
+    const recentAttempts = await prisma.quizAttempt
+      .findMany({
+        where: {
+          completed_at: { not: null },
         },
-        quiz: {
-          select: {
-            title: true,
-            module: {
-              select: {
-                title: true,
+        include: {
+          user: {
+            select: {
+              id: true,
+              full_name: true,
+              profil_url: true,
+            },
+          },
+          quiz: {
+            select: {
+              title: true,
+              module: {
+                select: {
+                  title: true,
+                },
               },
             },
           },
         },
-      },
-      orderBy: {
-        completed_at: "desc",
-      },
-      take: 100, // Take more to process
-    }).catch(() => []);
+        orderBy: {
+          completed_at: "desc",
+        },
+        take: 100, // Take more to process
+      })
+      .catch(() => []);
 
     // Get all recent module completions
-    const recentCompletions = await prisma.userModuleProgress.findMany({
-      where: {
-        status: "completed",
-        completed_at: { not: null },
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            full_name: true,
-            profil_url: true,
+    const recentCompletions = await prisma.userModuleProgress
+      .findMany({
+        where: {
+          status: "completed",
+          completed_at: { not: null },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              full_name: true,
+              profil_url: true,
+            },
+          },
+          module: {
+            select: {
+              title: true,
+            },
           },
         },
-        module: {
-          select: {
-            title: true,
-          },
+        orderBy: {
+          completed_at: "desc",
         },
-      },
-      orderBy: {
-        completed_at: "desc",
-      },
-      take: 100,
-    }).catch(() => []);
+        take: 100,
+      })
+      .catch(() => []);
 
     // Combine and classify by user
     const userActivityMap = new Map();
@@ -1134,8 +1209,10 @@ export const getRecentActivitiesClassified = async (limit: number = 20) => {
       const userId = attempt.user_id;
       const activityTime = attempt.completed_at!.getTime();
 
-      if (!userActivityMap.has(userId) ||
-          activityTime > userActivityMap.get(userId).timestamp) {
+      if (
+        !userActivityMap.has(userId) ||
+        activityTime > userActivityMap.get(userId).timestamp
+      ) {
         userActivityMap.set(userId, {
           user_id: userId,
           user_name: attempt.user.full_name || "Unknown User",
@@ -1156,8 +1233,10 @@ export const getRecentActivitiesClassified = async (limit: number = 20) => {
       const userId = completion.user_id;
       const activityTime = completion.completed_at!.getTime();
 
-      if (!userActivityMap.has(userId) ||
-          activityTime > userActivityMap.get(userId).timestamp) {
+      if (
+        !userActivityMap.has(userId) ||
+        activityTime > userActivityMap.get(userId).timestamp
+      ) {
         userActivityMap.set(userId, {
           user_id: userId,
           user_name: completion.user.full_name || "Unknown User",

@@ -171,6 +171,16 @@ export const getModuleCompletionStats = async () => {
             id: true,
           },
         },
+        subMateris: {
+          select: {
+            id: true,
+            poinDetails: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -181,8 +191,16 @@ export const getModuleCompletionStats = async () => {
       modules.map(async (module: any) => {
         const moduleQuizIds = module.quizzes.map((q: any) => q.id);
 
+        // Get all poin IDs in this module
+        const modulePoinIds: string[] = [];
+        module.subMateris.forEach((subMateri: any) => {
+          subMateri.poinDetails.forEach((poin: any) => {
+            modulePoinIds.push(poin.id);
+          });
+        });
+
         // Get all users who attempted quizzes in this module
-        const usersWithAttempts = await prisma.profile.findMany({
+        const usersWithQuizAttempts = await prisma.profile.findMany({
           where: {
             role: "pengguna",
             quizAttempts: {
@@ -209,13 +227,44 @@ export const getModuleCompletionStats = async () => {
           },
         });
 
-        const totalStarted = usersWithAttempts.length;
+        // Get all users who have reading progress in this module
+        const usersWithReadingProgress = await prisma.profile.findMany({
+          where: {
+            role: "pengguna",
+            poinProgress: {
+              some: {
+                poin_id: {
+                  in: modulePoinIds,
+                },
+                scroll_completed: true,
+              },
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        // Combine users: count unique users who either attempted quiz OR have reading progress
+        const usersWithQuizIds = new Set(
+          usersWithQuizAttempts.map((u: any) => u.id),
+        );
+        const usersWithReadingIds = new Set(
+          usersWithReadingProgress.map((u: any) => u.id),
+        );
+
+        // Union of both sets to get total unique users who started the module
+        const allStartedUserIds = new Set([
+          ...usersWithQuizIds,
+          ...usersWithReadingIds,
+        ]);
+        const totalStarted = allStartedUserIds.size;
 
         // Count users who completed (answered all quizzes in module)
         let totalCompleted = 0;
         let totalStuck = 0; // Users with 5+ failures in this module
 
-        usersWithAttempts.forEach((user: any) => {
+        usersWithQuizAttempts.forEach((user: any) => {
           const answeredQuizIds = new Set(
             user.quizAttempts.map((a: any) => a.quiz_id),
           );
@@ -251,7 +300,7 @@ export const getModuleCompletionStats = async () => {
         };
 
         console.log(
-          `[ModuleStats] ${module.title}: completed=${totalCompleted}, stuck=${totalStuck} (5+ failures), started=${totalStarted}, rate=${completionRate}%`,
+          `[ModuleStats] ${module.title}: completed=${totalCompleted}, stuck=${totalStuck} (5+ failures), started=${totalStarted} (${usersWithQuizIds.size} quiz + ${usersWithReadingIds.size} reading - ${usersWithQuizIds.size + usersWithReadingIds.size - totalStarted} overlap), rate=${completionRate}%`,
         );
 
         return stats;
