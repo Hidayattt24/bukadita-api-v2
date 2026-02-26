@@ -2,6 +2,18 @@ import prisma from "../config/database";
 import logger from "../config/logger";
 import supabaseAdmin from "../config/supabase";
 
+// Validation function for order_index
+const validateOrderIndex = (orderIndex: number | undefined): void => {
+  if (orderIndex !== undefined && orderIndex !== null) {
+    if (!Number.isInteger(orderIndex)) {
+      throw new Error("order_index must be an integer");
+    }
+    if (orderIndex < 0) {
+      throw new Error("order_index must be non-negative");
+    }
+  }
+};
+
 // Admin: Get all materials by module (including unpublished)
 export const getAllMaterials = async (
   moduleId: string,
@@ -310,6 +322,9 @@ export const createMaterial = async (
   userId: string
 ) => {
   try {
+    // Validate order_index
+    validateOrderIndex(data.order_index);
+
     const material = await prisma.subMateri.create({
       data: {
         module_id: data.module_id,
@@ -353,6 +368,9 @@ export const updateMaterial = async (
   userId: string
 ) => {
   try {
+    // Validate order_index if provided
+    validateOrderIndex(data.order_index);
+
     const material = await prisma.subMateri.update({
       where: { id: materialId },
       data: {
