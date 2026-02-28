@@ -31,7 +31,7 @@ export const getUserModulesProgress = async (userId: string) => {
     });
 
     const completedModules = progress.filter(
-      (p) => p.status === "completed"
+      (p) => p.status === "completed",
     ).length;
 
     return {
@@ -49,7 +49,10 @@ export const getUserModulesProgress = async (userId: string) => {
       overall_progress: {
         total_modules: totalModules,
         completed_modules: completedModules,
-        percentage: totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0,
+        percentage:
+          totalModules > 0
+            ? Math.round((completedModules / totalModules) * 100)
+            : 0,
       },
     };
   } catch (error) {
@@ -137,7 +140,7 @@ export const getModuleProgress = async (userId: string, moduleId: string) => {
     for (let i = 0; i < module.subMateris.length - 1; i++) {
       const currentSub = module.subMateris[i];
       const nextSub = module.subMateris[i + 1];
-      
+
       // Get current sub-materi progress
       const currentProgress = await prisma.userSubMateriProgress.findUnique({
         where: {
@@ -147,7 +150,7 @@ export const getModuleProgress = async (userId: string, moduleId: string) => {
           },
         },
       });
-      
+
       // ✅ Only unlock next if current is completed
       if (currentProgress?.is_completed) {
         // Ensure next sub-materi is unlocked
@@ -171,8 +174,10 @@ export const getModuleProgress = async (userId: string, moduleId: string) => {
             progress_percent: 0,
           },
         });
-        
-        logger.info(`[getModuleProgress] Auto-unlocked next sub-materi ${nextSub.id} because previous sub-materi ${currentSub.id} is completed`);
+
+        logger.info(
+          `[getModuleProgress] Auto-unlocked next sub-materi ${nextSub.id} because previous sub-materi ${currentSub.id} is completed`,
+        );
       } else {
         // ✅ Ensure next sub-materi is LOCKED if previous is not completed
         const nextProgress = await prisma.userSubMateriProgress.findUnique({
@@ -183,7 +188,7 @@ export const getModuleProgress = async (userId: string, moduleId: string) => {
             },
           },
         });
-        
+
         // Only lock if it exists and is not completed (don't lock completed sub-materis)
         if (nextProgress && !nextProgress.is_completed) {
           await prisma.userSubMateriProgress.update({
@@ -198,12 +203,14 @@ export const getModuleProgress = async (userId: string, moduleId: string) => {
               updated_at: new Date(),
             },
           });
-          
-          logger.info(`[getModuleProgress] Locked sub-materi ${nextSub.id} because previous sub-materi ${currentSub.id} is not completed`);
+
+          logger.info(
+            `[getModuleProgress] Locked sub-materi ${nextSub.id} because previous sub-materi ${currentSub.id} is not completed`,
+          );
         }
       }
     }
-    
+
     // Re-fetch sub-materis with updated progress
     const updatedModule = await prisma.module.findUnique({
       where: { id: moduleId },
@@ -232,7 +239,7 @@ export const getModuleProgress = async (userId: string, moduleId: string) => {
       // 🔥 FIX: First sub-materi should always be unlocked
       const isFirstSubMateri = index === 0;
       const isUnlocked = isFirstSubMateri || userProgress?.is_unlocked || false;
-      
+
       return {
         id: sm.id,
         title: sm.title,
@@ -267,7 +274,10 @@ export const getModuleProgress = async (userId: string, moduleId: string) => {
 };
 
 // Get sub-materi progress
-export const getSubMateriProgress = async (userId: string, subMateriId: string) => {
+export const getSubMateriProgress = async (
+  userId: string,
+  subMateriId: string,
+) => {
   try {
     let progress = await prisma.userSubMateriProgress.findUnique({
       where: {
@@ -338,7 +348,14 @@ export const getSubMateriProgress = async (userId: string, subMateriId: string) 
       title: poin.title,
       order_index: poin.order_index,
       duration_minutes: poin.duration_minutes,
-      is_completed: poin.userProgress.length > 0 ? poin.userProgress[0].is_completed : false,
+      is_completed:
+        poin.userProgress.length > 0
+          ? poin.userProgress[0].is_completed
+          : false,
+      scroll_completed:
+        poin.userProgress.length > 0
+          ? poin.userProgress[0].scroll_completed
+          : false, // 🔥 ADD: Include scroll completion status
     }));
 
     return {
@@ -363,7 +380,7 @@ export const getSubMateriProgress = async (userId: string, subMateriId: string) 
 export const completeSubMateri = async (
   userId: string,
   subMateriId: string,
-  moduleId?: string
+  moduleId?: string,
 ) => {
   try {
     // Get sub-materi to find module_id if not provided
@@ -416,7 +433,10 @@ export const completeSubMateri = async (
 };
 
 // Check material access
-export const checkMaterialAccess = async (userId: string, subMateriId: string) => {
+export const checkMaterialAccess = async (
+  userId: string,
+  subMateriId: string,
+) => {
   try {
     const progress = await prisma.userSubMateriProgress.findUnique({
       where: {
@@ -447,12 +467,12 @@ export const checkMaterialAccess = async (userId: string, subMateriId: string) =
     // Check if it's the first sub-materi in the module
     const isFirst = subMateri.order_index === 0;
 
-    const canAccess = isFirst || (progress?.is_unlocked || false);
+    const canAccess = isFirst || progress?.is_unlocked || false;
 
     return {
       can_access: canAccess,
       sub_materi_id: subMateriId,
-      is_unlocked: isFirst || (progress?.is_unlocked || false), // 🔥 FIX: First sub-materi always unlocked
+      is_unlocked: isFirst || progress?.is_unlocked || false, // 🔥 FIX: First sub-materi always unlocked
       reason: canAccess
         ? "Access granted"
         : "Complete previous sub-materi to unlock",
@@ -515,9 +535,10 @@ export const getQuizProgress = async (userId: string, quizId: string) => {
       take: 10,
     });
 
-    const bestScore = attempts.length > 0
-      ? Math.max(...attempts.map((a) => Number(a.score)))
-      : 0;
+    const bestScore =
+      attempts.length > 0
+        ? Math.max(...attempts.map((a) => Number(a.score)))
+        : 0;
 
     const passed = attempts.some((a) => a.passed);
 
@@ -566,21 +587,25 @@ export const getUserStats = async (userId: string) => {
       select: { score: true },
     });
 
-    const averageScore = quizAttempts.length > 0
-      ? quizAttempts.reduce((sum, a) => sum + Number(a.score), 0) / quizAttempts.length
-      : 0;
+    const averageScore =
+      quizAttempts.length > 0
+        ? quizAttempts.reduce((sum, a) => sum + Number(a.score), 0) /
+          quizAttempts.length
+        : 0;
 
     return {
       total_modules: totalModules,
       completed_modules: completedModules,
-      module_completion_rate: totalModules > 0
-        ? Math.round((completedModules / totalModules) * 100)
-        : 0,
+      module_completion_rate:
+        totalModules > 0
+          ? Math.round((completedModules / totalModules) * 100)
+          : 0,
       total_materials: totalSubMateris,
       completed_materials: completedSubMateris,
-      material_completion_rate: totalSubMateris > 0
-        ? Math.round((completedSubMateris / totalSubMateris) * 100)
-        : 0,
+      material_completion_rate:
+        totalSubMateris > 0
+          ? Math.round((completedSubMateris / totalSubMateris) * 100)
+          : 0,
       total_quiz_attempts: totalQuizAttempts,
       passed_quizzes: passedQuizzes,
       average_quiz_score: Math.round(averageScore),
@@ -604,16 +629,16 @@ export const getAllUsersProgress = async (params: {
     // Build where clause for search
     const whereClause = search
       ? {
-        OR: [
-          { full_name: { contains: search, mode: "insensitive" as const } },
-          { email: { contains: search, mode: "insensitive" as const } },
-          { phone: { contains: search, mode: "insensitive" as const } },
-        ],
-        role: "pengguna", // Only show regular users, not admins
-      }
+          OR: [
+            { full_name: { contains: search, mode: "insensitive" as const } },
+            { email: { contains: search, mode: "insensitive" as const } },
+            { phone: { contains: search, mode: "insensitive" as const } },
+          ],
+          role: "pengguna", // Only show regular users, not admins
+        }
       : {
-        role: "pengguna",
-      };
+          role: "pengguna",
+        };
 
     // Get users with their progress
     const [users, total] = await Promise.all([
@@ -676,10 +701,10 @@ export const getAllUsersProgress = async (params: {
         ]);
 
         const completedModules = moduleProgress.filter(
-          (p) => p.status === "completed"
+          (p) => p.status === "completed",
         ).length;
         const inProgressModules = moduleProgress.filter(
-          (p) => p.status === "in-progress"
+          (p) => p.status === "in-progress",
         ).length;
         const totalModulesAccessed = moduleProgress.length;
 
@@ -708,7 +733,7 @@ export const getAllUsersProgress = async (params: {
             last_quiz_passed: quizAttempts[0]?.passed || false,
           },
         };
-      })
+      }),
     );
 
     return {
@@ -739,17 +764,20 @@ export async function updateModuleProgress(userId: string, moduleId: string) {
 
   const totalSubMateris = subMateris.length;
   const completedSubMateris = subMateris.filter(
-    (sm) => sm.userProgress[0]?.is_completed
+    (sm) => sm.userProgress[0]?.is_completed,
   ).length;
 
-  const progressPercent = totalSubMateris > 0
-    ? Math.round((completedSubMateris / totalSubMateris) * 100)
-    : 0;
+  const progressPercent =
+    totalSubMateris > 0
+      ? Math.round((completedSubMateris / totalSubMateris) * 100)
+      : 0;
 
   const status =
-    progressPercent === 0 ? "not-started" :
-      progressPercent === 100 ? "completed" :
-        "in-progress";
+    progressPercent === 0
+      ? "not-started"
+      : progressPercent === 100
+        ? "completed"
+        : "in-progress";
 
   await prisma.userModuleProgress.upsert({
     where: {
@@ -776,7 +804,10 @@ export async function updateModuleProgress(userId: string, moduleId: string) {
 }
 
 // Helper: Update sub-materi progress
-export async function updateSubMateriProgress(userId: string, subMateriId: string) {
+export async function updateSubMateriProgress(
+  userId: string,
+  subMateriId: string,
+) {
   const poins = await prisma.poinDetail.findMany({
     where: { sub_materi_id: subMateriId },
     include: {
@@ -788,12 +819,11 @@ export async function updateSubMateriProgress(userId: string, subMateriId: strin
 
   const totalPoins = poins.length;
   const completedPoins = poins.filter(
-    (p) => p.userProgress[0]?.is_completed
+    (p) => p.userProgress[0]?.is_completed,
   ).length;
 
-  const progressPercent = totalPoins > 0
-    ? Math.round((completedPoins / totalPoins) * 100)
-    : 0;
+  const progressPercent =
+    totalPoins > 0 ? Math.round((completedPoins / totalPoins) * 100) : 0;
 
   await prisma.userSubMateriProgress.upsert({
     where: {
@@ -821,7 +851,7 @@ export async function updateSubMateriProgress(userId: string, subMateriId: strin
 export async function unlockNextSubMateri(
   userId: string,
   moduleId: string,
-  currentSubMateriId: string
+  currentSubMateriId: string,
 ) {
   const currentSubMateri = await prisma.subMateri.findUnique({
     where: { id: currentSubMateriId },
@@ -861,23 +891,30 @@ export async function unlockNextSubMateri(
 }
 
 // Mark poin as scroll completed (user reached 100% scroll)
-export const markPoinScrollCompleted = async (userId: string, poinId: string) => {
+export const markPoinScrollCompleted = async (
+  userId: string,
+  poinId: string,
+) => {
   try {
-    logger.info(`[markPoinScrollCompleted] User ${userId} completed scrolling poin ${poinId}`);
+    logger.info(
+      `[markPoinScrollCompleted] User ${userId} completed scrolling poin ${poinId}`,
+    );
 
     // Check if already marked as scroll completed
-    const existingProgress = await prisma.userPoinProgress.findUnique({
+    const existingProgress = (await prisma.userPoinProgress.findUnique({
       where: {
         user_id_poin_id: {
           user_id: userId,
           poin_id: poinId,
         },
       },
-    }) as any; // Type assertion until Prisma regenerated
+    })) as any; // Type assertion until Prisma regenerated
 
     // Only update if not already scroll completed (first time reaching 100%)
     if (existingProgress?.scroll_completed) {
-      logger.info(`[markPoinScrollCompleted] Poin ${poinId} already marked as scroll completed`);
+      logger.info(
+        `[markPoinScrollCompleted] Poin ${poinId} already marked as scroll completed`,
+      );
       return {
         success: true,
         already_completed: true,
@@ -886,7 +923,7 @@ export const markPoinScrollCompleted = async (userId: string, poinId: string) =>
     }
 
     // Update or create progress with scroll completion
-    const progress = await prisma.userPoinProgress.upsert({
+    const progress = (await prisma.userPoinProgress.upsert({
       where: {
         user_id_poin_id: {
           user_id: userId,
@@ -904,9 +941,11 @@ export const markPoinScrollCompleted = async (userId: string, poinId: string) =>
         scroll_completed_at: new Date(),
         is_completed: false, // Scroll completion doesn't mean poin is completed
       } as any, // Type assertion until Prisma regenerated
-    }) as any;
+    })) as any;
 
-    logger.info(`[markPoinScrollCompleted] Successfully marked poin ${poinId} as scroll completed`);
+    logger.info(
+      `[markPoinScrollCompleted] Successfully marked poin ${poinId} as scroll completed`,
+    );
 
     return {
       success: true,
@@ -922,7 +961,7 @@ export const markPoinScrollCompleted = async (userId: string, poinId: string) =>
 // Get poin scroll status
 export const getPoinScrollStatus = async (userId: string, poinId: string) => {
   try {
-    const progress = await prisma.userPoinProgress.findUnique({
+    const progress = (await prisma.userPoinProgress.findUnique({
       where: {
         user_id_poin_id: {
           user_id: userId,
@@ -933,7 +972,7 @@ export const getPoinScrollStatus = async (userId: string, poinId: string) => {
         scroll_completed: true,
         scroll_completed_at: true,
       } as any, // Type assertion until Prisma regenerated
-    }) as any;
+    })) as any;
 
     return {
       scroll_completed: progress?.scroll_completed || false,
