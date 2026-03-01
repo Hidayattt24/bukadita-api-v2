@@ -78,9 +78,9 @@ export const getAllUsersProgress = async (params: {
         })),
       })),
       pagination: {
-        page,
+        currentPage: page,
         limit,
-        total,
+        totalCount: total,
         totalPages: Math.ceil(total / limit),
       },
     };
@@ -266,9 +266,9 @@ export const getQuizAttempts = async (params: {
         completed_at: attempt.completed_at,
       })),
       pagination: {
-        page,
+        currentPage: page,
         limit,
-        total,
+        totalCount: total,
         totalPages: Math.ceil(total / limit),
       },
     };
@@ -606,9 +606,9 @@ export const getAllUsers = async (params: {
         quiz_attempts: user._count.quizAttempts,
       })),
       pagination: {
-        page,
+        currentPage: page,
         limit,
-        total,
+        totalCount: total,
         totalPages: Math.ceil(total / limit),
       },
     };
@@ -689,9 +689,9 @@ export const getActivityLogs = async (params: {
         created_at: log.created_at,
       })),
       pagination: {
-        page,
+        currentPage: page,
         limit,
-        total,
+        totalCount: total,
         totalPages: Math.ceil(total / limit),
       },
     };
