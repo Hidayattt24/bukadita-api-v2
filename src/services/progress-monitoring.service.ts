@@ -1085,21 +1085,42 @@ export const getUserDetailProgress = async (userId: string) => {
               ? attempt.answers
               : [];
 
-            const answersDetail = answersArray.map((ans: any, idx: number) => {
-              const question = attempt.quiz.questions[idx];
+            // ✅ FIX: Map answers by question_id instead of index to handle randomized quizzes
+            const answersDetail = answersArray.map((ans: any) => {
+              // Find the matching question by question_id (not by index!)
+              const question = attempt.quiz.questions.find(
+                (q: any) => q.id === ans.question_id,
+              );
+
               if (!question) {
+                console.warn(
+                  `[getUserDetailProgress] Question not found for answer:`,
+                  {
+                    quiz_id: attempt.quiz_id,
+                    question_id: ans.question_id,
+                    available_questions: attempt.quiz.questions.map(
+                      (q: any) => q.id,
+                    ),
+                  },
+                );
                 return {
-                  question_id: `q_${idx}`,
-                  question_text: "Pertanyaan tidak ditemukan",
+                  question_id: ans.question_id || "unknown",
+                  question_text:
+                    ans.question_text || "Pertanyaan tidak ditemukan",
                   user_answer: "Tidak tersedia",
                   correct_answer: "Tidak tersedia",
                   is_correct: false,
                 };
               }
 
+              // Extract options from question (handle different formats)
               const options = Array.isArray(question.options)
-                ? question.options
+                ? question.options.map((opt: any) =>
+                    typeof opt === "string" ? opt : opt.text || String(opt),
+                  )
                 : [];
+
+              // Get user's selected answer index
               const userAnswerIndex =
                 ans.selected_option_index ??
                 ans.answer_index ??
@@ -1107,11 +1128,15 @@ export const getUserDetailProgress = async (userId: string) => {
                 ans.selected_index ??
                 ans.selectedIndex ??
                 -1;
+
+              // Get correct answer index
               const correctAnswerIndex =
+                ans.correct_answer_index ?? // Use from saved answer if available
                 question.correct_answer_index ??
                 question.correctAnswerIndex ??
                 -1;
 
+              // Convert index to text
               let userAnswerText = "Tidak dijawab";
               if (userAnswerIndex >= 0 && userAnswerIndex < options.length) {
                 userAnswerText = options[userAnswerIndex];
@@ -1129,12 +1154,13 @@ export const getUserDetailProgress = async (userId: string) => {
 
               return {
                 question_id: question.id,
-                question_text: question.question_text,
+                question_text: ans.question_text || question.question_text,
                 user_answer: userAnswerText,
                 correct_answer: correctAnswerText,
                 is_correct:
-                  userAnswerIndex === correctAnswerIndex &&
-                  userAnswerIndex >= 0,
+                  ans.is_correct ??
+                  (userAnswerIndex === correctAnswerIndex &&
+                    userAnswerIndex >= 0),
               };
             });
 
