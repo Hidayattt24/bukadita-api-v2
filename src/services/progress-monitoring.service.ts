@@ -171,6 +171,16 @@ export const getModuleCompletionStats = async () => {
             id: true,
           },
         },
+        subMateris: {
+          select: {
+            id: true,
+            poinDetails: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -181,8 +191,16 @@ export const getModuleCompletionStats = async () => {
       modules.map(async (module: any) => {
         const moduleQuizIds = module.quizzes.map((q: any) => q.id);
 
+        // Get all poin IDs in this module
+        const modulePoinIds: string[] = [];
+        module.subMateris.forEach((subMateri: any) => {
+          subMateri.poinDetails.forEach((poin: any) => {
+            modulePoinIds.push(poin.id);
+          });
+        });
+
         // Get all users who attempted quizzes in this module
-        const usersWithAttempts = await prisma.profile.findMany({
+        const usersWithQuizAttempts = await prisma.profile.findMany({
           where: {
             role: "pengguna",
             quizAttempts: {
@@ -209,13 +227,44 @@ export const getModuleCompletionStats = async () => {
           },
         });
 
-        const totalStarted = usersWithAttempts.length;
+        // Get all users who have reading progress in this module
+        const usersWithReadingProgress = await prisma.profile.findMany({
+          where: {
+            role: "pengguna",
+            poinProgress: {
+              some: {
+                poin_id: {
+                  in: modulePoinIds,
+                },
+                scroll_completed: true,
+              },
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        // Combine users: count unique users who either attempted quiz OR have reading progress
+        const usersWithQuizIds = new Set(
+          usersWithQuizAttempts.map((u: any) => u.id),
+        );
+        const usersWithReadingIds = new Set(
+          usersWithReadingProgress.map((u: any) => u.id),
+        );
+
+        // Union of both sets to get total unique users who started the module
+        const allStartedUserIds = new Set([
+          ...usersWithQuizIds,
+          ...usersWithReadingIds,
+        ]);
+        const totalStarted = allStartedUserIds.size;
 
         // Count users who completed (answered all quizzes in module)
         let totalCompleted = 0;
         let totalStuck = 0; // Users with 5+ failures in this module
 
-        usersWithAttempts.forEach((user: any) => {
+        usersWithQuizAttempts.forEach((user: any) => {
           const answeredQuizIds = new Set(
             user.quizAttempts.map((a: any) => a.quiz_id),
           );
@@ -251,7 +300,7 @@ export const getModuleCompletionStats = async () => {
         };
 
         console.log(
-          `[ModuleStats] ${module.title}: completed=${totalCompleted}, stuck=${totalStuck} (5+ failures), started=${totalStarted}, rate=${completionRate}%`,
+          `[ModuleStats] ${module.title}: completed=${totalCompleted}, stuck=${totalStuck} (5+ failures), started=${totalStarted} (${usersWithQuizIds.size} quiz + ${usersWithReadingIds.size} reading - ${usersWithQuizIds.size + usersWithReadingIds.size - totalStarted} overlap), rate=${completionRate}%`,
         );
 
         return stats;
@@ -1036,21 +1085,42 @@ export const getUserDetailProgress = async (userId: string) => {
               ? attempt.answers
               : [];
 
-            const answersDetail = answersArray.map((ans: any, idx: number) => {
-              const question = attempt.quiz.questions[idx];
+            // ✅ FIX: Map answers by question_id instead of index to handle randomized quizzes
+            const answersDetail = answersArray.map((ans: any) => {
+              // Find the matching question by question_id (not by index!)
+              const question = attempt.quiz.questions.find(
+                (q: any) => q.id === ans.question_id,
+              );
+
               if (!question) {
+                console.warn(
+                  `[getUserDetailProgress] Question not found for answer:`,
+                  {
+                    quiz_id: attempt.quiz_id,
+                    question_id: ans.question_id,
+                    available_questions: attempt.quiz.questions.map(
+                      (q: any) => q.id,
+                    ),
+                  },
+                );
                 return {
-                  question_id: `q_${idx}`,
-                  question_text: "Pertanyaan tidak ditemukan",
+                  question_id: ans.question_id || "unknown",
+                  question_text:
+                    ans.question_text || "Pertanyaan tidak ditemukan",
                   user_answer: "Tidak tersedia",
                   correct_answer: "Tidak tersedia",
                   is_correct: false,
                 };
               }
 
+              // Extract options from question (handle different formats)
               const options = Array.isArray(question.options)
-                ? question.options
+                ? question.options.map((opt: any) =>
+                    typeof opt === "string" ? opt : opt.text || String(opt),
+                  )
                 : [];
+
+              // Get user's selected answer index
               const userAnswerIndex =
                 ans.selected_option_index ??
                 ans.answer_index ??
@@ -1058,11 +1128,15 @@ export const getUserDetailProgress = async (userId: string) => {
                 ans.selected_index ??
                 ans.selectedIndex ??
                 -1;
+
+              // Get correct answer index
               const correctAnswerIndex =
+                ans.correct_answer_index ?? // Use from saved answer if available
                 question.correct_answer_index ??
                 question.correctAnswerIndex ??
                 -1;
 
+              // Convert index to text
               let userAnswerText = "Tidak dijawab";
               if (userAnswerIndex >= 0 && userAnswerIndex < options.length) {
                 userAnswerText = options[userAnswerIndex];
@@ -1080,12 +1154,13 @@ export const getUserDetailProgress = async (userId: string) => {
 
               return {
                 question_id: question.id,
-                question_text: question.question_text,
+                question_text: ans.question_text || question.question_text,
                 user_answer: userAnswerText,
                 correct_answer: correctAnswerText,
                 is_correct:
-                  userAnswerIndex === correctAnswerIndex &&
-                  userAnswerIndex >= 0,
+                  ans.is_correct ??
+                  (userAnswerIndex === correctAnswerIndex &&
+                    userAnswerIndex >= 0),
               };
             });
 

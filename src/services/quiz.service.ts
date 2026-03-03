@@ -3,7 +3,7 @@ import * as progressService from "./progress.service";
 
 export const getQuizzesByModule = async (
   moduleId: string,
-  includeUnpublished: boolean = false // ✅ NEW: Option for admin
+  includeUnpublished: boolean = false, // ✅ NEW: Option for admin
 ) => {
   const whereClause: any = { module_id: moduleId };
 
@@ -35,7 +35,7 @@ export const getQuizzesByModule = async (
 
 export const getQuizById = async (
   quizId: string,
-  includeAnswers: boolean = false
+  includeAnswers: boolean = false,
 ) => {
   const quiz = await prisma.materisQuiz.findUnique({
     where: { id: quizId },
@@ -73,7 +73,7 @@ export const getQuizById = async (
 
   // ✅ Randomize questions using Fisher-Yates algorithm
   let questionsToReturn = quiz.questions;
-  
+
   if (quiz.questions_to_show && quiz.questions_to_show > 0) {
     // Shuffle questions
     const shuffled = [...quiz.questions];
@@ -81,11 +81,13 @@ export const getQuizById = async (
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    
+
     // Take only the specified number of questions
     questionsToReturn = shuffled.slice(0, quiz.questions_to_show);
-    
-    console.log(`[getQuizById] Quiz randomized: showing ${questionsToReturn.length} out of ${quiz.questions.length} questions`);
+
+    console.log(
+      `[getQuizById] Quiz randomized: showing ${questionsToReturn.length} out of ${quiz.questions.length} questions`,
+    );
   } else {
     // ✅ Even if questions_to_show is not set, still shuffle for variety
     const shuffled = [...quiz.questions];
@@ -94,8 +96,10 @@ export const getQuizById = async (
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     questionsToReturn = shuffled;
-    
-    console.log(`[getQuizById] Quiz shuffled: showing all ${questionsToReturn.length} questions in random order`);
+
+    console.log(
+      `[getQuizById] Quiz shuffled: showing all ${questionsToReturn.length} questions in random order`,
+    );
   }
 
   return {
@@ -134,7 +138,7 @@ export const startQuiz = async (userId: string, quizId: string) => {
   // If there's an ongoing attempt, return it instead of creating a new one
   if (existingOngoingAttempt) {
     console.log(
-      `[startQuiz] ✅ Found existing ongoing attempt ${existingOngoingAttempt.id}, returning it instead of creating new one`
+      `[startQuiz] ✅ Found existing ongoing attempt ${existingOngoingAttempt.id}, returning it instead of creating new one`,
     );
     return {
       attempt_id: existingOngoingAttempt.id,
@@ -148,7 +152,7 @@ export const startQuiz = async (userId: string, quizId: string) => {
 
   // Create new quiz attempt only if no ongoing attempt exists
   console.log(
-    `[startQuiz] 🆕 Creating new quiz attempt for user ${userId}, quiz ${quizId}`
+    `[startQuiz] 🆕 Creating new quiz attempt for user ${userId}, quiz ${quizId}`,
   );
   const attempt = await prisma.quizAttempt.create({
     data: {
@@ -177,11 +181,11 @@ export const submitQuiz = async (
       question_id: string;
       selected_option_index: number;
     }>;
-  }
+  },
 ) => {
   // ✅ VALIDATION: Prevent empty submissions
   if (!data.answers || data.answers.length === 0) {
-    console.error('[submitQuiz] ❌ Empty answers array, rejecting submission');
+    console.error("[submitQuiz] ❌ Empty answers array, rejecting submission");
     throw new Error("Cannot submit quiz with no answers");
   }
 
@@ -213,6 +217,9 @@ export const submitQuiz = async (
       correct_answer_index: question.correct_answer_index,
       is_correct,
       explanation: question.explanation,
+      // ✅ FIX: Save question text and options for review display
+      question_text: question.question_text,
+      options: question.options,
     };
   });
 
@@ -258,7 +265,7 @@ export const submitQuiz = async (
 
   if (passed && quiz.sub_materi_id) {
     console.log(
-      `[submitQuiz] ✅ Quiz passed! Saving progress for sub-materi: ${quiz.sub_materi_id}`
+      `[submitQuiz] ✅ Quiz passed! Saving progress for sub-materi: ${quiz.sub_materi_id}`,
     );
 
     try {
@@ -269,7 +276,7 @@ export const submitQuiz = async (
       });
 
       console.log(
-        `[submitQuiz] 📝 Found ${poins.length} poins to mark as completed`
+        `[submitQuiz] 📝 Found ${poins.length} poins to mark as completed`,
       );
 
       // Mark all poins as completed
@@ -296,12 +303,12 @@ export const submitQuiz = async (
       }
 
       console.log(
-        `[submitQuiz] ✅ All ${poins.length} poins marked as completed`
+        `[submitQuiz] ✅ All ${poins.length} poins marked as completed`,
       );
 
       // Mark sub-materi as completed
       console.log(
-        `[submitQuiz] Marking sub-materi ${quiz.sub_materi_id} as completed...`
+        `[submitQuiz] Marking sub-materi ${quiz.sub_materi_id} as completed...`,
       );
       await prisma.userSubMateriProgress.upsert({
         where: {
@@ -336,24 +343,24 @@ export const submitQuiz = async (
 
       if (subMateri) {
         console.log(
-          `[submitQuiz] Updating module progress for module: ${subMateri.module_id}`
+          `[submitQuiz] Updating module progress for module: ${subMateri.module_id}`,
         );
         await progressService.updateModuleProgress(userId, subMateri.module_id);
         await progressService.unlockNextSubMateri(
           userId,
           subMateri.module_id,
-          quiz.sub_materi_id
+          quiz.sub_materi_id,
         );
         console.log(`[submitQuiz] ✅ Module progress updated`);
       }
 
       console.log(
-        `[submitQuiz] ✅ ALL PROGRESS SAVED - ${poins.length} poins and sub-materi ${quiz.sub_materi_id} marked as completed`
+        `[submitQuiz] ✅ ALL PROGRESS SAVED - ${poins.length} poins and sub-materi ${quiz.sub_materi_id} marked as completed`,
       );
     } catch (error) {
       console.error(
         "[submitQuiz] ❌ ERROR marking poins/sub-materi as completed:",
-        error
+        error,
       );
       console.error("[submitQuiz] Error details:", {
         name: (error as Error).name,
@@ -408,7 +415,10 @@ export const getQuizAttempts = async (userId: string, quizId?: string) => {
 };
 
 // 🔥 NEW: Get quiz attempts by module (for quiz history)
-export const getQuizAttemptsByModule = async (userId: string, moduleId: string) => {
+export const getQuizAttemptsByModule = async (
+  userId: string,
+  moduleId: string,
+) => {
   const attempts = await prisma.quizAttempt.findMany({
     where: {
       user_id: userId,
@@ -502,7 +512,7 @@ export const addQuizQuestion = async (
     correct_answer_index: number;
     explanation?: string;
     order_index: number;
-  }
+  },
 ) => {
   const question = await prisma.quizQuestion.create({
     data: {
