@@ -16,6 +16,7 @@ import progressRoutes from "./routes/progress.routes";
 import adminRoutes from "./routes/admin.routes";
 import quizAdminRoutes from "./routes/quiz.admin.routes";
 import noteRoutes from "./routes/note.routes";
+import messageRoutes from "./routes/message.routes";
 import userRoutes from "./routes/user.routes";
 import whatsappRoutes from "./routes/whatsapp.routes";
 
@@ -588,6 +589,7 @@ app.use(`${API_PREFIX}/progress`, progressRoutes);
 app.use(`${API_PREFIX}/admin`, adminRoutes);
 app.use(`${API_PREFIX}/admin/quizzes`, quizAdminRoutes);
 app.use(`${API_PREFIX}/notes`, noteRoutes);
+app.use(`${API_PREFIX}/messages`, messageRoutes);
 app.use(`${API_PREFIX}/users`, userRoutes);
 app.use(`${API_PREFIX}/whatsapp`, whatsappRoutes);
 
