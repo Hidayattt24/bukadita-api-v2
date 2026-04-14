@@ -195,3 +195,59 @@ export const markAllAsRead = async (
     sendError(res, "MESSAGES_READ_ALL_ERROR", error.message, 500);
   }
 };
+
+/**
+ * Admin hard-deletes a message (removed for everyone)
+ * DELETE /api/v1/messages/:id
+ */
+export const adminDeleteMessage = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const senderId = req.user?.userId;
+    if (!senderId) {
+      sendError(res, API_CODES.UNAUTHORIZED, "Authentication required", 401);
+      return;
+    }
+
+    const { id } = req.params;
+    await messageService.adminDeleteMessage(id, senderId);
+
+    sendSuccess(res, "MESSAGE_DELETE_SUCCESS", "Pesan berhasil dihapus", null);
+  } catch (error: any) {
+    if (error.message === "Message not found") {
+      sendError(res, API_CODES.NOT_FOUND, "Pesan tidak ditemukan", 404);
+    } else {
+      sendError(res, "MESSAGE_DELETE_ERROR", error.message, 500);
+    }
+  }
+};
+
+/**
+ * User soft-deletes a message (hidden from their inbox only)
+ * DELETE /api/v1/messages/my/:id
+ */
+export const userDeleteMessage = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      sendError(res, API_CODES.UNAUTHORIZED, "Authentication required", 401);
+      return;
+    }
+
+    const { id } = req.params;
+    await messageService.userDeleteMessage(id, userId);
+
+    sendSuccess(res, "MESSAGE_DISMISS_SUCCESS", "Notifikasi berhasil dihapus", null);
+  } catch (error: any) {
+    if (error.message === "Message not found") {
+      sendError(res, API_CODES.NOT_FOUND, "Pesan tidak ditemukan", 404);
+    } else {
+      sendError(res, "MESSAGE_DISMISS_ERROR", error.message, 500);
+    }
+  }
+};

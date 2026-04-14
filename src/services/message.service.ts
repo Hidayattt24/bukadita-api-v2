@@ -1,6 +1,14 @@
 import prisma from "../config/database";
 import logger from "../config/logger";
 
+const senderSelect = {
+  id: true, full_name: true, role: true, profil_url: true,
+} as const;
+
+const receiverSelect = {
+  id: true, full_name: true, email: true, profil_url: true,
+} as const;
+
 export const sendMessage = async (data: {
   sender_id: string;
   receiver_id: string;
@@ -24,12 +32,8 @@ export const sendMessage = async (data: {
         message: data.message,
       },
       include: {
-        sender: {
-          select: { id: true, full_name: true, role: true, profil_url: true },
-        },
-        receiver: {
-          select: { id: true, full_name: true, email: true, profil_url: true },
-        },
+        sender: { select: senderSelect },
+        receiver: { select: receiverSelect },
       },
     });
 
@@ -47,24 +51,19 @@ export const getMessagesByReceiver = async (
 ) => {
   try {
     const skip = (page - 1) * limit;
+    const where = { receiver_id: receiverId, deleted_by_receiver: false };
 
     const [messages, total, unreadCount] = await Promise.all([
       prisma.adminMessage.findMany({
-        where: { receiver_id: receiverId },
-        include: {
-          sender: {
-            select: { id: true, full_name: true, role: true, profil_url: true },
-          },
-        },
+        where,
+        include: { sender: { select: senderSelect } },
         orderBy: { created_at: "desc" },
         skip,
         take: limit,
       }),
+      prisma.adminMessage.count({ where }),
       prisma.adminMessage.count({
-        where: { receiver_id: receiverId },
-      }),
-      prisma.adminMessage.count({
-        where: { receiver_id: receiverId, is_read: false },
+        where: { ...where, is_read: false },
       }),
     ]);
 
@@ -87,7 +86,11 @@ export const getMessagesByReceiver = async (
 export const getUnreadCount = async (receiverId: string) => {
   try {
     const count = await prisma.adminMessage.count({
-      where: { receiver_id: receiverId, is_read: false },
+      where: {
+        receiver_id: receiverId,
+        is_read: false,
+        deleted_by_receiver: false,
+      },
     });
     return count;
   } catch (error) {
@@ -100,11 +103,7 @@ export const markAsRead = async (messageId: string, receiverId: string) => {
   try {
     const existing = await prisma.adminMessage.findFirst({
       where: { id: messageId, receiver_id: receiverId },
-      include: {
-        sender: {
-          select: { id: true, full_name: true, role: true, profil_url: true },
-        },
-      },
+      include: { sender: { select: senderSelect } },
     });
 
     if (!existing) {
@@ -118,11 +117,7 @@ export const markAsRead = async (messageId: string, receiverId: string) => {
     const msg = await prisma.adminMessage.update({
       where: { id: messageId },
       data: { is_read: true, read_at: new Date() },
-      include: {
-        sender: {
-          select: { id: true, full_name: true, role: true, profil_url: true },
-        },
-      },
+      include: { sender: { select: senderSelect } },
     });
 
     return msg;
@@ -135,7 +130,7 @@ export const markAsRead = async (messageId: string, receiverId: string) => {
 export const markAllAsRead = async (receiverId: string) => {
   try {
     const result = await prisma.adminMessage.updateMany({
-      where: { receiver_id: receiverId, is_read: false },
+      where: { receiver_id: receiverId, is_read: false, deleted_by_receiver: false },
       data: { is_read: true, read_at: new Date() },
     });
 
@@ -154,28 +149,17 @@ export const getMessageHistory = async (
 ) => {
   try {
     const skip = (page - 1) * limit;
+    const where = { sender_id: senderId, receiver_id: receiverId };
 
     const [messages, total] = await Promise.all([
       prisma.adminMessage.findMany({
-        where: {
-          sender_id: senderId,
-          receiver_id: receiverId,
-        },
-        include: {
-          receiver: {
-            select: { id: true, full_name: true, email: true, profil_url: true },
-          },
-        },
+        where,
+        include: { receiver: { select: receiverSelect } },
         orderBy: { created_at: "desc" },
         skip,
         take: limit,
       }),
-      prisma.adminMessage.count({
-        where: {
-          sender_id: senderId,
-          receiver_id: receiverId,
-        },
-      }),
+      prisma.adminMessage.count({ where }),
     ]);
 
     return {
@@ -190,5 +174,51 @@ export const getMessageHistory = async (
   } catch (error) {
     logger.error("Error fetching message history:", error);
     throw new Error("Failed to fetch message history");
+  }
+};
+
+/**
+ * Admin hard-deletes a message (gone for everyone)
+ */
+export const adminDeleteMessage = async (messageId: string, senderId: string) => {
+  try {
+    const existing = await prisma.adminMessage.findFirst({
+      where: { id: messageId, sender_id: senderId },
+    });
+
+    if (!existing) {
+      throw new Error("Message not found");
+    }
+
+    await prisma.adminMessage.delete({ where: { id: messageId } });
+    return true;
+  } catch (error) {
+    logger.error("Error admin deleting message:", error);
+    throw error;
+  }
+};
+
+/**
+ * User soft-deletes a message (hidden from their inbox, still visible to admin)
+ */
+export const userDeleteMessage = async (messageId: string, receiverId: string) => {
+  try {
+    const existing = await prisma.adminMessage.findFirst({
+      where: { id: messageId, receiver_id: receiverId },
+    });
+
+    if (!existing) {
+      throw new Error("Message not found");
+    }
+
+    const msg = await prisma.adminMessage.update({
+      where: { id: messageId },
+      data: { deleted_by_receiver: true },
+    });
+
+    return msg;
+  } catch (error) {
+    logger.error("Error user deleting message:", error);
+    throw error;
   }
 };
