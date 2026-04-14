@@ -31,6 +31,8 @@ model Profile {
   createdModules      Module[] @relation("CreatedBy")
   createdQuizzes      MaterisQuiz[] @relation("CreatedBy")
   userNotes           UserNote[]
+  sentMessages        AdminMessage[] @relation("SentMessages")
+  receivedMessages    AdminMessage[] @relation("ReceivedMessages")
 
   @@map("profiles")
   @@index([role])
@@ -283,4 +285,23 @@ model UserNote {
   @@index([created_at(sort: Desc)])
   @@index([is_pinned])
   @@index([category])
+}
+
+model AdminMessage {
+  id          String   @id @default(uuid()) @db.Uuid
+  sender_id   String   @db.Uuid
+  receiver_id String   @db.Uuid
+  title       String   @db.VarChar(255)
+  message     String   @db.Text
+  is_read     Boolean  @default(false)
+  read_at     DateTime? @db.Timestamptz()
+  created_at  DateTime @default(now()) @db.Timestamptz()
+
+  sender   Profile @relation("SentMessages", fields: [sender_id], references: [id], onDelete: Cascade)
+  receiver Profile @relation("ReceivedMessages", fields: [receiver_id], references: [id], onDelete: Cascade)
+
+  @@map("admin_messages")
+  @@index([receiver_id, is_read])
+  @@index([receiver_id, created_at(sort: Desc)])
+  @@index([sender_id, created_at(sort: Desc)])
 }
