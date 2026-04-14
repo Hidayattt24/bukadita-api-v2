@@ -100,6 +100,11 @@ export const markAsRead = async (messageId: string, receiverId: string) => {
   try {
     const existing = await prisma.adminMessage.findFirst({
       where: { id: messageId, receiver_id: receiverId },
+      include: {
+        sender: {
+          select: { id: true, full_name: true, role: true, profil_url: true },
+        },
+      },
     });
 
     if (!existing) {
@@ -113,6 +118,11 @@ export const markAsRead = async (messageId: string, receiverId: string) => {
     const msg = await prisma.adminMessage.update({
       where: { id: messageId },
       data: { is_read: true, read_at: new Date() },
+      include: {
+        sender: {
+          select: { id: true, full_name: true, role: true, profil_url: true },
+        },
+      },
     });
 
     return msg;
