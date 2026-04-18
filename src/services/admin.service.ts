@@ -892,6 +892,83 @@ export const updateUser = async (
       }
     }
 
+    // Validate and normalize phone if provided
+    if (dataToUpdate.phone) {
+      if (!validatePhone(dataToUpdate.phone)) {
+        throw new Error(
+          "Invalid phone number format. Use format: 08xxx or +62xxx",
+        );
+      }
+      dataToUpdate.phone = normalizePhone(dataToUpdate.phone);
+    }
+
+    // If email is being updated, update Supabase Auth as well
+    if (updateData.email) {
+      const supabase = (await import("../config/supabase")).default;
+      
+      // Check if new email is already taken by another user
+      const existingUser = await prisma.profile.findFirst({
+        where: {
+          email: updateData.email,
+          NOT: { id: userId },
+        },
+      });
+
+      if (existingUser) {
+        throw new Error("Email already registered by another user");
+      }
+
+      // Update email in Supabase Auth
+      const { error: authError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { email: updateData.email }
+      );
+
+      if (authError) {
+        logger.error("Error updating email in Supabase Auth:", authError);
+        throw new Error(`Failed to update email in auth: ${authError.message}`);
+      }
+
+      // Update email in user_credentials table
+      await supabase
+        .from("user_credentials")
+        .update({ 
+          email: updateData.email,
+          updated_at: new Date().toISOString() 
+        })
+        .eq("id", userId);
+
+      logger.info("Email updated in Supabase Auth and user_credentials:", {
+        userId,
+        newEmail: updateData.email,
+      });
+    }
+
+    // If phone is being updated, check if it's already taken
+    if (dataToUpdate.phone) {
+      const existingUser = await prisma.profile.findFirst({
+        where: {
+          phone: dataToUpdate.phone,
+          NOT: { id: userId },
+        },
+      });
+
+      if (existingUser) {
+        throw new Error("Phone number already registered by another user");
+      }
+
+      // Update phone in user_credentials table
+      const supabase = (await import("../config/supabase")).default;
+      await supabase
+        .from("user_credentials")
+        .update({ 
+          phone: dataToUpdate.phone,
+          updated_at: new Date().toISOString() 
+        })
+        .eq("id", userId);
+    }
+
+    // Update profile in database
     const user = await prisma.profile.update({
       where: { id: userId },
       data: {
@@ -900,10 +977,15 @@ export const updateUser = async (
       },
     });
 
+    logger.info("User profile updated successfully:", {
+      userId,
+      updatedFields: Object.keys(updateData),
+    });
+
     return user;
   } catch (error) {
     logger.error("Error updating user:", error);
-    throw new Error("Failed to update user");
+    throw error;
   }
 };
 

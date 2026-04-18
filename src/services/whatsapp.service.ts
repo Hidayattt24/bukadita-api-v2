@@ -7,7 +7,6 @@ const WHATSAPP_SESSION_ID = process.env.WHATSAPP_SESSION_ID || "default";
 
 // Frontend URL for reset password link
 const getFrontendUrl = () => {
-  // Always use production URL for clickable links
   return "https://www.bukadita.id";
 };
 
@@ -19,20 +18,16 @@ export const sendWhatsAppMessage = async (
   message: string
 ): Promise<{ success: boolean; messageId?: string }> => {
   try {
-    // Validate API key
     if (!WHATSAPP_API_KEY) {
       throw new Error("WhatsApp API key not configured");
     }
 
-    // Format phone number (remove + if exists, ensure starts with country code)
     let formattedPhone = phone.replace(/\+/g, "");
-    
-    // If phone starts with 0, replace with 62 (Indonesia)
+
     if (formattedPhone.startsWith("0")) {
       formattedPhone = "62" + formattedPhone.substring(1);
     }
-    
-    // If phone doesn't start with country code, add 62
+
     if (!formattedPhone.startsWith("62")) {
       formattedPhone = "62" + formattedPhone;
     }
@@ -42,7 +37,6 @@ export const sendWhatsAppMessage = async (
       sessionId: WHATSAPP_SESSION_ID,
     });
 
-    // Send message via VenusConnect API
     const response = await axios.post(
       `${WHATSAPP_API_URL}/api/session/${WHATSAPP_SESSION_ID}/send`,
       {
@@ -54,7 +48,7 @@ export const sendWhatsAppMessage = async (
           "x-api-key": WHATSAPP_API_KEY,
           "Content-Type": "application/json",
         },
-        timeout: 30000, // 30 seconds timeout
+        timeout: 30000,
       }
     );
 
@@ -78,11 +72,10 @@ export const sendWhatsAppMessage = async (
       response: error.response?.data,
     });
 
-    // Return error details
     throw new Error(
       error.response?.data?.error ||
-        error.message ||
-        "Failed to send WhatsApp message"
+      error.message ||
+      "Failed to send WhatsApp message"
     );
   }
 };
@@ -97,33 +90,27 @@ export const sendPasswordResetOTP = async (
 ): Promise<{ success: boolean }> => {
   try {
     const frontendUrl = getFrontendUrl();
-    
-    // Create secure reset link with userId as token
     const resetLink = `${frontendUrl}/konfirmasi-password?token=${userId}`;
 
-    // Create message with OTP and secure link
-    const message = `🔐 *BukaDita - Reset Password*
+    // ⚠️ Jangan beri indentasi pada baris template literal ini
+    const message = `Halo! Saya *Tim BukaDita Official* 👋
+Simpan nomor ini agar link bisa dibuka dengan cepat ya 😊
 
-Halo! Kami menerima permintaan untuk mereset password akun Anda.
+🔐 *Reset Password BukaDita*
 
-*Kode Verifikasi:* ${otp}
-⏱️ Berlaku selama 10 menit
+Kode OTP Anda: *${otp}*
+⏳ Berlaku 10 menit
 
-Silakan klik link berikut untuk melanjutkan:
-${resetLink}
+👉 ${resetLink}
 
-━━━━━━━━━━━━━━━━━━━━
-⚠️ *PENTING - Keamanan Akun*
+────────────────
+🛡️ *Keamanan Akun*
+- Jangan bagikan kode & link ini
+- BukaDita tidak pernah meminta kode Anda
 
-✓ Link ini khusus untuk nomor HP Anda
-✓ Jangan bagikan kode atau link ini
-✓ Tim BukaDita tidak akan pernah meminta kode Anda
-
-Jika Anda tidak meminta reset password, abaikan pesan ini dan akun Anda tetap aman.
-
-━━━━━━━━━━━━━━━━━━━━
-_Pesan otomatis dari BukaDita_
-_Jangan balas pesan ini_`;
+Bukan Anda yang request? Abaikan saja, akun Anda tetap aman.
+────────────────
+_Pesan otomatis · Jangan dibalas_`;
 
     await sendWhatsAppMessage(phone, message);
 
