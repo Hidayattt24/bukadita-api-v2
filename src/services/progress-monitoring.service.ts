@@ -366,6 +366,7 @@ export const getStuckUsersByModule = async (moduleId: string) => {
         id: true,
         full_name: true,
         email: true,
+        profil_url: true,
         quizAttempts: {
           where: {
             quiz_id: {
@@ -375,6 +376,13 @@ export const getStuckUsersByModule = async (moduleId: string) => {
           select: {
             passed: true,
             completed_at: true,
+            quiz_id: true,
+            quiz: {
+              select: {
+                id: true,
+                title: true,
+              },
+            },
           },
           orderBy: {
             completed_at: "desc",
@@ -396,6 +404,28 @@ export const getStuckUsersByModule = async (moduleId: string) => {
             ? user.quizAttempts[0].completed_at
             : new Date();
 
+        // Group failures by quiz to show which quizzes failed and how many times
+        const quizFailures = new Map<string, { title: string; count: number }>();
+        user.quizAttempts.forEach((attempt: any) => {
+          if (!attempt.passed) {
+            const quizId = attempt.quiz_id;
+            const quizTitle = attempt.quiz?.title || "Unknown Quiz";
+            if (!quizFailures.has(quizId)) {
+              quizFailures.set(quizId, { title: quizTitle, count: 0 });
+            }
+            quizFailures.get(quizId)!.count++;
+          }
+        });
+
+        // Convert to array and sort by failure count
+        const failedQuizzes = Array.from(quizFailures.entries())
+          .map(([quiz_id, data]) => ({
+            quiz_id,
+            quiz_title: data.title,
+            failure_count: data.count,
+          }))
+          .sort((a, b) => b.failure_count - a.failure_count);
+
         console.log(
           `[StuckUsers] User: ${user.full_name}, Failures: ${failures}`,
         );
@@ -404,12 +434,14 @@ export const getStuckUsersByModule = async (moduleId: string) => {
           user_id: user.id,
           user_name: user.full_name,
           user_email: user.email || "",
-          failure_count: failures,
-          last_attempt: lastAttempt,
+          user_profil_url: user.profil_url || null,
+          total_quiz_failed: failures,
+          last_activity: lastAttempt,
+          failed_quizzes: failedQuizzes,
         };
       })
-      .filter((user: any) => user.failure_count >= 5) // CHANGED: 5+ failures instead of 3+
-      .sort((a: any, b: any) => b.failure_count - a.failure_count); // Sort by failure count desc
+      .filter((user: any) => user.total_quiz_failed >= 5) // CHANGED: 5+ failures instead of 3+
+      .sort((a: any, b: any) => b.total_quiz_failed - a.total_quiz_failed); // Sort by failure count desc
 
     console.log(`[StuckUsers] Stuck users (5+ failures): ${stuckUsers.length}`);
     if (stuckUsers.length > 0) {
@@ -417,7 +449,7 @@ export const getStuckUsersByModule = async (moduleId: string) => {
         `[StuckUsers] Sample:`,
         stuckUsers
           .slice(0, 3)
-          .map((u: any) => `${u.user_name} (${u.failure_count} failures)`),
+          .map((u: any) => `${u.user_name} (${u.total_quiz_failed} failures)`),
       );
     }
     console.log("========== [getStuckUsersByModule] END ==========\n");
