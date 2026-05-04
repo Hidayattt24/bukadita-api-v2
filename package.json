@@ -21,6 +21,7 @@
     "test:api": "tsx test-api.ts",
     "test:user-flow": "tsx test-user-flow.ts",
     "test:user-profile": "tsx test-user-profile.ts",
+    "test:integration": "tsx test/integration-test-ta.ts",
     "check:storage": "tsx check-storage.ts",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""
