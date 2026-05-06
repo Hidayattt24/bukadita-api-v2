@@ -142,19 +142,24 @@ export const markAllAsRead = async (receiverId: string) => {
 };
 
 export const getMessageHistory = async (
-  senderId: string,
+  adminId: string,
+  adminRole: string,
   receiverId: string,
   page: number = 1,
   limit: number = 20
 ) => {
   try {
     const skip = (page - 1) * limit;
-    const where = { sender_id: senderId, receiver_id: receiverId };
+    // Shared history: all admin/superadmin messages to this user are visible
+    const where = { receiver_id: receiverId };
 
     const [messages, total] = await Promise.all([
       prisma.adminMessage.findMany({
         where,
-        include: { receiver: { select: receiverSelect } },
+        include: {
+          sender: { select: senderSelect },
+          receiver: { select: receiverSelect },
+        },
         orderBy: { created_at: "desc" },
         skip,
         take: limit,
@@ -163,7 +168,11 @@ export const getMessageHistory = async (
     ]);
 
     return {
-      items: messages,
+      items: messages.map((msg) => ({
+        ...msg,
+        // Only sender or superadmin can delete
+        can_delete: adminRole === "superadmin" || msg.sender_id === adminId,
+      })),
       pagination: {
         page,
         limit,
@@ -182,12 +191,23 @@ export const getMessageHistory = async (
  */
 export const adminDeleteMessage = async (messageId: string, senderId: string) => {
   try {
-    const existing = await prisma.adminMessage.findFirst({
-      where: { id: messageId, sender_id: senderId },
+    const sender = await prisma.profile.findUnique({
+      where: { id: senderId },
+      select: { role: true },
+    });
+
+    const existing = await prisma.adminMessage.findUnique({
+      where: { id: messageId },
     });
 
     if (!existing) {
       throw new Error("Message not found");
+    }
+
+    const isSuperAdmin = sender?.role === "superadmin";
+    const isMessageOwner = existing.sender_id === senderId;
+    if (!isSuperAdmin && !isMessageOwner) {
+      throw new Error("Forbidden");
     }
 
     await prisma.adminMessage.delete({ where: { id: messageId } });

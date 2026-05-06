@@ -56,8 +56,9 @@ export const getMessageHistory = async (
   res: Response
 ): Promise<void> => {
   try {
-    const senderId = req.user?.userId;
-    if (!senderId) {
+    const adminId = req.user?.userId;
+    const adminRole = req.user?.profile?.role || req.user?.role;
+    if (!adminId || !adminRole) {
       sendError(res, API_CODES.UNAUTHORIZED, "Authentication required", 401);
       return;
     }
@@ -66,7 +67,8 @@ export const getMessageHistory = async (
     const { page = 1, limit = 20 } = req.query;
 
     const result = await messageService.getMessageHistory(
-      senderId,
+      adminId,
+      adminRole,
       userId,
       Number(page),
       Number(limit)
@@ -218,6 +220,8 @@ export const adminDeleteMessage = async (
   } catch (error: any) {
     if (error.message === "Message not found") {
       sendError(res, API_CODES.NOT_FOUND, "Pesan tidak ditemukan", 404);
+    } else if (error.message === "Forbidden") {
+      sendError(res, API_CODES.FORBIDDEN, "Tidak diizinkan menghapus pesan ini", 403);
     } else {
       sendError(res, "MESSAGE_DELETE_ERROR", error.message, 500);
     }
