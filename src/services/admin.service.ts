@@ -1016,6 +1016,27 @@ export const deleteUser = async (userId: string) => {
   }
 };
 
+// Get user by ID (helper function for role checking)
+export const getUserById = async (userId: string) => {
+  try {
+    const user = await prisma.profile.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        full_name: true,
+        phone: true,
+        role: true,
+      },
+    });
+
+    return user;
+  } catch (error) {
+    logger.error("Error fetching user by ID:", error);
+    throw new Error("Failed to fetch user");
+  }
+};
+
 // Get quiz performance detailed (per module with users)
 export const getQuizPerformanceDetailed = async (moduleId?: string) => {
   try {

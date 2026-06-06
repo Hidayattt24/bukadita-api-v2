@@ -381,6 +381,7 @@ export const deleteUser = async (
   try {
     const { userId } = req.params;
     const currentUserId = req.user?.userId;
+    const callerRole = req.user?.role;
 
     // Prevent self-deletion
     if (userId === currentUserId) {
@@ -389,6 +390,25 @@ export const deleteUser = async (
         API_CODES.VALIDATION_ERROR,
         "You cannot delete your own account",
         400
+      );
+      return;
+    }
+
+    // Get target user's role before deletion
+    const targetUser = await adminService.getUserById(userId);
+    
+    if (!targetUser) {
+      sendError(res, API_CODES.NOT_FOUND, "User not found", 404);
+      return;
+    }
+
+    // Role hierarchy check: admin cannot delete superadmin or other admins
+    if (callerRole === "admin" && (targetUser.role === "superadmin" || targetUser.role === "admin")) {
+      sendError(
+        res,
+        API_CODES.FORBIDDEN,
+        "You cannot delete admin or superadmin users",
+        403
       );
       return;
     }

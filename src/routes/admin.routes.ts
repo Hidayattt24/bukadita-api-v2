@@ -42,8 +42,8 @@ router.get("/activity-logs", adminController.getActivityLogs);
 router.post("/users/:userId/reset-progress", adminController.resetUserProgress);
 
 // User management - CRUD
-router.post("/users", requireSuperAdmin, adminController.createUser);
+router.post("/users", requireAdmin, adminController.createUser); // Allow both admin and superadmin
 router.put("/users/:userId", requireAdmin, adminController.updateUser);
-router.delete("/users/:userId", requireSuperAdmin, adminController.deleteUser);
+router.delete("/users/:userId", requireAdmin, adminController.deleteUser); // Allow both admin and superadmin
 
 export default router;
